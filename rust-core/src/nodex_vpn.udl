@@ -1,0 +1,118 @@
+// src/nodex_vpn.udl
+// UniFFI Interface Definition – NodeX VPN Core Engine
+// Generates Kotlin + Swift + C bindings automatically.
+
+namespace nodex_vpn {
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    [Throws=VpnError]
+    void start_nodex(VpnConfig config);
+
+    [Throws=VpnError]
+    void stop_nodex();
+
+    boolean is_running();
+
+    // ── Server / Exit Node selection ──────────────────────────────────────────
+    [Throws=VpnError]
+    void set_exit_node(string iso_code);
+
+    string? get_current_exit_ip();
+
+    sequence<ServerNode> get_available_nodes();
+
+    // ── Real-time statistics ──────────────────────────────────────────────────
+    VpnStats get_real_time_stats();
+
+    // ── Bootstrap progress ────────────────────────────────────────────────────
+    BootstrapStatus get_bootstrap_status();
+
+    // ── Bridge / obfs4 management ─────────────────────────────────────────────
+    [Throws=VpnError]
+    void add_bridge(string bridge_line);
+
+    void clear_bridges();
+
+    // ── DNS leak protection ───────────────────────────────────────────────────
+    void set_dns_over_tor(boolean enabled);
+
+    // ── Logging ───────────────────────────────────────────────────────────────
+    void set_log_level(LogLevel level);
+    string get_recent_logs(u32 max_lines);
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Data types
+// ──────────────────────────────────────────────────────────────────────────────
+
+dictionary VpnConfig {
+    string socks_listen_addr;       // default "127.0.0.1:9050"
+    string dns_listen_addr;         // default "127.0.0.1:5353"
+    boolean use_bridges;
+    sequence<string> bridge_lines;  // obfs4 bridge lines
+    boolean strict_exit_nodes;
+    string? preferred_exit_iso;     // e.g. "US", "DE"
+    u32 circuit_build_timeout_secs;
+    string state_dir;               // OS-specific data directory
+    string cache_dir;
+};
+
+dictionary VpnStats {
+    u64 bytes_sent;
+    u64 bytes_received;
+    u64 send_rate_bps;
+    u64 recv_rate_bps;
+    u32 active_circuits;
+    u32 pending_circuits;
+    f64 latency_ms;
+    string current_exit_country;
+    string current_exit_ip;
+    u64 uptime_secs;
+};
+
+dictionary ServerNode {
+    string id;
+    string country_code;   // ISO 3166-1 alpha-2
+    string country_name;
+    string city;
+    f64 latency_ms;
+    u8 load_percent;
+    boolean is_bridge;
+    boolean supports_obfs4;
+};
+
+dictionary BootstrapStatus {
+    u8 percent;
+    string phase;
+    boolean is_complete;
+    string? error_message;
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────────────────────────────────────
+
+enum LogLevel {
+    "Error",
+    "Warn",
+    "Info",
+    "Debug",
+    "Trace",
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Errors
+// ──────────────────────────────────────────────────────────────────────────────
+
+[Error]
+enum VpnError {
+    "TorInitFailed",
+    "BridgeConnectionFailed",
+    "TunnelCreationFailed",
+    "RoutingSetupFailed",
+    "AlreadyRunning",
+    "NotRunning",
+    "InvalidConfig",
+    "PermissionDenied",
+    "PlatformNotSupported",
+    "Unknown",
+};

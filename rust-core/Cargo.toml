@@ -1,0 +1,99 @@
+[package]
+name    = "nodex-vpn-core"
+version = "0.3.0"
+edition = "2021"
+authors = ["NodeX VPN Team"]
+description = "High-performance Tor-based VPN core engine"
+
+# ─── Library ──────────────────────────────────────────────────────────────────
+[lib]
+name       = "nodex_vpn_core"
+crate-type = ["cdylib", "staticlib"]
+
+# ─── Common Dependencies ──────────────────────────────────────────────────────
+[dependencies]
+# UniFFI – automatic Kotlin/Swift/C binding generation
+uniffi = { version = "0.28", features = ["tokio"] }
+
+# Arti – pure-Rust Tor client
+arti-client = { version = "0.22", features = [
+    "tokio",
+    "async-std",
+    "bridge-client",
+    "pt-client",
+    "onion-service-client",
+]}
+tor-config      = "0.22"
+tor-rtcompat    = { version = "0.22", features = ["tokio"] }
+tor-socksproto  = "0.22"
+arti-hyper      = { version = "0.22", optional = true }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Networking / SOCKS
+socks5-server  = "0.8"
+smoltcp        = { version = "0.11", features = ["socket-tcp", "socket-udp", "socket-raw"] }
+
+# TUN device (Linux / macOS desktop)
+tun = { version = "0.6", features = ["async"] }
+
+# Serialisation
+serde            = { version = "1", features = ["derive"] }
+serde_json       = "1"
+
+# Utilities
+anyhow      = "1"
+thiserror   = "1"
+log         = "0.4"
+env_logger  = "0.11"
+once_cell   = "1"
+parking_lot = "0.12"
+tokio-util  = { version = "0.7", features = ["codec"] }
+bytes       = "1"
+futures     = "0.3"
+async-trait = "0.1"
+chrono      = { version = "0.4", features = ["serde"] }
+uuid        = { version = "1", features = ["v4"] }
+
+# ─── Platform-specific ────────────────────────────────────────────────────────
+[target.'cfg(target_os = "windows")'.dependencies]
+wintun      = "0.4"
+windows-sys = { version = "0.52", features = [
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Foundation",
+    "Win32_System_IO",
+]}
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix   = { version = "0.29", features = ["net", "user", "process"] }
+libc  = "0.2"
+rtnetlink = "0.14"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+nix  = { version = "0.29", features = ["net", "user"] }
+libc = "0.2"
+
+# Android – JNI bridge (uniffi handles this but we may need extras)
+[target.'cfg(target_os = "android")'.dependencies]
+jni    = "0.21"
+android_logger = "0.14"
+
+# ─── Build Dependencies ───────────────────────────────────────────────────────
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
+
+# ─── Features ─────────────────────────────────────────────────────────────────
+[features]
+default      = []
+hyper-client = ["arti-hyper"]
+metrics      = []
+
+# ─── Profile ──────────────────────────────────────────────────────────────────
+[profile.release]
+lto           = true
+codegen-units = 1
+opt-level     = 3
+panic         = "abort"
+strip         = true

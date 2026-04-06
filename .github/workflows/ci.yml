@@ -1,0 +1,311 @@
+name: NodeX VPN — Multi-Platform Build
+
+on:
+  push:
+    branches: [main, develop]
+    tags:     ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE:   1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 1: Build Rust core for all targets
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  rust-core:
+    name: "Rust [${{ matrix.target }}]"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: aarch64-linux-android,     os: ubuntu-24.04, group: android }
+          - { target: armv7-linux-androideabi,   os: ubuntu-24.04, group: android }
+          - { target: x86_64-linux-android,      os: ubuntu-24.04, group: android }
+          - { target: aarch64-apple-ios,         os: macos-15,     group: ios     }
+          - { target: x86_64-apple-ios,          os: macos-15,     group: ios     }
+          - { target: aarch64-apple-ios-sim,     os: macos-15,     group: ios     }
+          - { target: x86_64-apple-darwin,       os: macos-15,     group: macos   }
+          - { target: aarch64-apple-darwin,      os: macos-15,     group: macos   }
+          - { target: x86_64-unknown-linux-gnu,  os: ubuntu-24.04, group: linux   }
+          - { target: x86_64-pc-windows-msvc,    os: windows-2022, group: windows }
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets:    ${{ matrix.target }}
+          components: clippy, rustfmt
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust-core/target
+          key: rust-${{ matrix.target }}-${{ hashFiles('rust-core/Cargo.lock') }}
+
+      - name: Install Android NDK + cargo-ndk
+        if:   matrix.group == 'android'
+        uses: nttld/setup-ndk@v1
+        with: { ndk-version: r27c }
+
+      - run: cargo install cargo-ndk --locked
+        if:  matrix.group == 'android'
+
+      - name: Linux build deps
+        if:   matrix.group == 'linux'
+        run:  sudo apt-get install -y --no-install-recommends libssl-dev pkg-config libdbus-1-dev
+
+      - name: Build (Android)
+        if:   matrix.group == 'android'
+        working-directory: rust-core
+        run:  cargo ndk -t ${{ matrix.target }} -o ../shared/src/androidMain/jniLibs build --release
+
+      - name: Build (non-Android)
+        if:   matrix.group != 'android'
+        working-directory: rust-core
+        run:  cargo build --release --target ${{ matrix.target }}
+
+      - name: UniFFI Kotlin bindings
+        if:   matrix.target == 'aarch64-linux-android'
+        working-directory: rust-core
+        run: |
+          cargo run --release --bin uniffi-bindgen \
+            generate src/nodex_vpn.udl --language kotlin \
+            --out-dir ../shared/src/commonMain/kotlin/com/nodex/vpn/generated/
+
+      - name: UniFFI Swift bindings
+        if:   matrix.target == 'aarch64-apple-ios'
+        working-directory: rust-core
+        run: |
+          cargo run --release --bin uniffi-bindgen \
+            generate src/nodex_vpn.udl --language swift \
+            --out-dir ../iosApp/Sources/generated/
+
+      - name: iOS XCFramework
+        if:   matrix.target == 'aarch64-apple-ios'
+        run: |
+          mkdir -p rust-core/target/universal-ios artifacts
+          lipo -create \
+            rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
+            rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
+            -output rust-core/target/universal-ios/libnodex_vpn_core.a
+          xcodebuild -create-xcframework \
+            -library rust-core/target/universal-ios/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -output artifacts/NodexVpnCore.xcframework
+
+      - name: macOS universal dylib
+        if:   matrix.target == 'x86_64-apple-darwin'
+        run: |
+          mkdir -p rust-core/target/universal-macos
+          lipo -create \
+            rust-core/target/x86_64-apple-darwin/release/libnodex_vpn_core.dylib \
+            rust-core/target/aarch64-apple-darwin/release/libnodex_vpn_core.dylib \
+            -output rust-core/target/universal-macos/libnodex_vpn_core.dylib
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-core-${{ matrix.target }}
+          path: |
+            rust-core/target/${{ matrix.target }}/release/libnodex_vpn_core.*
+            rust-core/target/${{ matrix.target }}/release/nodex_vpn_core.*
+          retention-days: 7
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 2: Android APK + AAB
+# ─────────────────────────────────────────────────────────────────────────────
+  android:
+    name: "Android APK + AAB"
+    needs: rust-core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - uses: android-actions/setup-android@v3
+
+      # ── Inject google-services.json from GitHub Secret ─────────────────────
+      # To set up: Go to Firebase Console → Project Settings → Download google-services.json
+      # Then add the file contents as a GitHub secret named GOOGLE_SERVICES_JSON
+      # Settings → Secrets → Actions → New repository secret
+      - name: Inject google-services.json (from GitHub Secret)
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > androidApp/google-services.json
+      
+      - name: Decode Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
+
+
+      - name: Download Android JNI libs
+        uses: actions/download-artifact@v4
+        with:
+          pattern:        rust-core-*android*
+          merge-multiple: true
+          path:           shared/src/androidMain/jniLibs/
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run:  ./gradlew :androidApp:assembleDebug
+
+      - name: Build release AAB
+        run:  ./gradlew :androidApp:bundleRelease
+        env:
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS:     ${{ secrets.KEY_ALIAS }}
+          KEY_PASS:      ${{ secrets.KEY_PASS }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android-apk, path: "androidApp/build/outputs/apk/debug/*.apk" }
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android-aab, path: "androidApp/build/outputs/bundle/release/*.aab" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 3: iOS IPA
+# ─────────────────────────────────────────────────────────────────────────────
+  ios:
+    name: "iOS IPA"
+    needs: rust-core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Inject GoogleService-Info.plist from GitHub Secret ─────────────────
+      # To set up: Firebase Console → Project Settings → iOS app → Download GoogleService-Info.plist
+      # Add file contents as GitHub secret named GOOGLE_SERVICE_INFO_PLIST
+      - name: Inject GoogleService-Info.plist (from GitHub Secret)
+        run: echo '${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}' > iosApp/iosApp/GoogleService-Info.plist
+
+      - name: Download iOS XCFramework
+        uses: actions/download-artifact@v4
+        with: { name: rust-core-aarch64-apple-ios, path: artifacts/ }
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '3.3', bundler-cache: true }
+
+      - name: Install CocoaPods
+        working-directory: iosApp
+        run: pod install --repo-update
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build KMP iOS framework
+        run: ./gradlew :shared:linkReleaseFrameworkIosArm64
+
+      - name: Xcode archive
+        run: |
+          xcodebuild archive \
+            -workspace iosApp/NodeXVPN.xcworkspace \
+            -scheme NodeXVPN \
+            -sdk iphoneos \
+            -archivePath build/NodeXVPN.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/NodeXVPN.xcarchive \
+            -exportOptionsPlist iosApp/ExportOptions.plist \
+            -exportPath build/ipa/
+
+      - uses: actions/upload-artifact@v4
+        with: { name: ios-ipa, path: "build/ipa/*.ipa" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 4: Desktop packages
+# ─────────────────────────────────────────────────────────────────────────────
+  desktop-macos:
+    name: "Desktop macOS DMG"
+    needs: rust-core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: actions/download-artifact@v4
+        with: { pattern: rust-core-*apple-darwin, merge-multiple: true, path: desktopApp/resources/macos/ }
+      - name: Build ICNS from iconset
+        run: |
+          iconutil -c icns desktopApp/resources/macos/AppIcon.iconset             -o desktopApp/resources/macos/icon.icns
+          echo "✅ icon.icns created"
+
+      - name: Update iconFile to use .icns
+        run: |
+          sed -i '' 's|resources/macos/AppIcon.iconset/icon_512x512@2x.png|resources/macos/icon.icns|g'             desktopApp/build.gradle.kts
+
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :desktopApp:packageDmg
+      - uses: actions/upload-artifact@v4
+        with: { name: macos-dmg, path: "desktopApp/build/compose/binaries/main/dmg/*.dmg" }
+
+  desktop-linux:
+    name: "Desktop Linux DEB+RPM"
+    needs: rust-core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - run: sudo apt-get install -y rpm
+      - name: Download Linux Rust libs
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-unknown-linux-gnu
+          path: desktopApp/resources/linux/rust/
+      - name: Move Rust lib (keep icon)
+        run: mv desktopApp/resources/linux/rust/libnodex_vpn_core.so desktopApp/resources/linux/ || true
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            desktopApp/build/compose/binaries/main/deb/*.deb
+            desktopApp/build/compose/binaries/main/rpm/*.rpm
+
+  desktop-windows:
+    name: "Desktop Windows MSI"
+    needs: rust-core
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: actions/download-artifact@v4
+        with: { name: rust-core-x86_64-pc-windows-msvc, path: desktopApp/resources/windows/ }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :desktopApp:packageMsi
+      - uses: actions/upload-artifact@v4
+        with: { name: windows-msi, path: "desktopApp/build/compose/binaries/main/msi/*.msi" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 5: GitHub Release
+# ─────────────────────────────────────────────────────────────────────────────
+  release:
+    name: "GitHub Release"
+    needs: [android, ios, desktop-macos, desktop-linux, desktop-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: release-artifacts/ }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files:                 release-artifacts/**/*
+          generate_release_notes: true
+          prerelease:            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
