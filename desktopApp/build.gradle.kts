@@ -36,10 +36,10 @@ compose.desktop {
             )
 
             packageName    = "NodeX VPN"
-            packageVersion = "0.3.0"
+            packageVersion = "0.1.0"
             vendor         = "NodeX Project"
             description    = "Serverless VPN powered by the Tor network"
-            copyright      = "© 2025 NodeX Project"
+            copyright      = "© 2026 AeonCoreX"
             licenseFile    = rootProject.file("LICENSE")
 
             // ── macOS ──────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ compose.desktop {
 
             // ── Windows ────────────────────────────────────────────────────────
             windows {
-                msiPackageVersion   = "0.3.0"
+                msiPackageVersion   = "0.1.0"
                 upgradeUuid         = "3A4B5C6D-7E8F-9A0B-C1D2-E3F4A5B6C7D8"
                 menuGroup           = "NodeX VPN"
                 shortcut            = true
@@ -74,7 +74,7 @@ compose.desktop {
                 appCategory         = "Network"
                 iconFile            = project.file("resources/nodex.png")
                 // Post-install script to set CAP_NET_ADMIN
-                debPackageVersion   = "0.3.0"
+                debPackageVersion   = "0.1.0"
             }
 
             // ── JVM args for all platforms ─────────────────────────────────────

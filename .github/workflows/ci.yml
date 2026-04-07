@@ -53,7 +53,7 @@ jobs:
       - name: Install Android NDK + cargo-ndk
         if:   matrix.group == 'android'
         uses: nttld/setup-ndk@v1
-        with: { ndk-version: r27c }
+        with: { ndk-version: r28b }
 
       - run: cargo install cargo-ndk --locked
         if:  matrix.group == 'android'
@@ -65,6 +65,8 @@ jobs:
       - name: Build (Android)
         if:   matrix.group == 'android'
         working-directory: rust-core
+        env:
+          OPENSSL_STATIC: 1
         run:  cargo ndk -t ${{ matrix.target }} -o ../shared/src/androidMain/jniLibs build --release
 
       - name: Build (non-Android)
