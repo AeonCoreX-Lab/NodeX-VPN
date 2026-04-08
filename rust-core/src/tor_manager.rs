@@ -21,7 +21,11 @@ use arti_client::{
 };
 use tor_rtcompat::PreferredRuntime;
 
-use anyhow::{Context, anyhow};
+// FIX: Import BridgeConfig from the correct public path (tor_guardmgr::bridge)
+// instead of the private re-export inside arti_client::config.
+use tor_guardmgr::bridge::BridgeConfig;
+
+use anyhow::Context;
 use log::{debug, info, warn, error};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -166,8 +170,13 @@ impl TorEngine {
         if cfg.use_bridges && !bridges.is_empty() {
             info!("Configuring {} Tor bridge(s)", bridges.len());
             for line in &bridges {
-                match line.trim().parse::<arti_client::config::BridgeConfig>() {
-                    Ok(bc)  => { b.bridges().bridges().push(bc.into()); }
+                // FIX: Parse using the correct public BridgeConfig type imported above,
+                // then push as BridgeConfigBuilder via the proper From/Into conversion.
+                // BridgeConfig implements Into<BridgeConfigBuilder> in tor-guardmgr 0.22.
+                match line.trim().parse::<BridgeConfig>() {
+                    Ok(bc)  => {
+                        b.bridges().bridges().push(bc.into());
+                    }
                     Err(e)  => warn!("Bad bridge line: {e}"),
                 }
             }
@@ -231,11 +240,17 @@ impl TorEngine {
     pub fn stream_prefs(&self) -> StreamPrefs {
         let mut prefs = StreamPrefs::new();
         // arti 0.22 StreamPrefs: set country preference if configured
-        if let Some(iso) = self.exit_iso.read().as_deref() {
+        if let Some(_iso) = self.exit_iso.read().as_deref() {
             // Use isolation token to prefer different exit relays per country
             prefs.set_isolation(arti_client::IsolationToken::no_isolation());
         }
         prefs
+    }
+
+    // FIX: Public accessor for the TorClient Arc so dns.rs can call it
+    // without directly accessing the private `client` field.
+    pub fn client(&self) -> Arc<TorClient<PreferredRuntime>> {
+        self.client.clone()
     }
 }
 
@@ -326,13 +341,15 @@ async fn handle_socks5_conn(
         (dst_host.as_str(), dst_port),
         &prefs,
     ).await {
-        Ok(mut tor_stream) => {
+        Ok(tor_stream) => {
             // Reply: succeeded
             stream.write_all(&[0x05, 0x00, 0x00, 0x01, 0,0,0,0, 0,0]).await?;
 
-            // Bidirectional relay with stats tracking
-            let (mut ri, mut wi) = stream.split();
-            let (mut rt, mut wt) = tor_stream.split();
+            // FIX: Use tokio::io::split() on the owned TcpStream instead of
+            // stream.split() which only borrows and cannot be sent into 'static spawns.
+            // tokio::io::split() takes ownership and produces 'static halves.
+            let (mut ri, mut wi) = tokio::io::split(stream);
+            let (mut rt, mut wt) = tokio::io::split(tor_stream);
             let st1 = stats.clone();
             let st2 = stats.clone();
 

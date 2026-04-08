@@ -18,7 +18,8 @@ use tokio::sync::oneshot;
 
 const TUN_NAME: &str = "nodex0";
 const TUN_ADDR: &str = "10.66.0.1";
-const TUN_MTU:  u32  = 1500;
+// FIX: tun 0.8 Configuration::mtu() expects u16, not u32.
+const TUN_MTU:  u16  = 1500;
 const RT_TABLE: &str = "200";
 
 static STOP_TX: OnceCell<Mutex<Option<oneshot::Sender<()>>>> = OnceCell::new();

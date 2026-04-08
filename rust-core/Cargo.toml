@@ -24,6 +24,9 @@ arti-client = { version = "0.22", features = [
 tor-config     = "0.22"
 tor-rtcompat   = { version = "0.22", features = ["tokio"] }
 tor-socksproto = "0.22"
+# FIX: Required for BridgeConfig — arti_client::config::BridgeConfig is private,
+# the canonical public type lives in tor_guardmgr::bridge.
+tor-guardmgr   = { version = "0.22", features = ["bridge-client"] }
 
 # Async runtime
 tokio       = { version = "1", features = ["full"] }

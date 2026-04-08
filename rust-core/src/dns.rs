@@ -15,7 +15,7 @@
 use crate::tor_manager::TorEngine;
 
 use anyhow::Context;
-use log::{debug, info, warn, error};
+use log::{debug, info, warn};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -128,10 +128,13 @@ async fn resolve_via_tor(query: Vec<u8>, tor: Arc<TorEngine>) -> anyhow::Result<
         v
     };
 
-    // Open TCP stream through Tor to upstream DNS server
-    let mut stream = timeout(
+    // FIX: Use tor.client() method (public accessor) instead of tor.client field
+    // (which is private). This resolves E0616 and the cascading E0282 type-inference
+    // errors that occurred because the field access was rejected before the type
+    // of `stream` could be inferred.
+    let mut stream: arti_client::DataStream = timeout(
         Duration::from_secs(DNS_TIMEOUT_SECS),
-        tor.client.connect((DNS_UPSTREAM_HOST, DNS_UPSTREAM_PORT)),
+        tor.client().connect((DNS_UPSTREAM_HOST, DNS_UPSTREAM_PORT)),
     ).await
     .context("DNS Tor connect timeout")?
     .context("DNS Tor connect failed")?;
@@ -196,11 +199,4 @@ fn make_servfail(query: &[u8]) -> Vec<u8> {
         resp[3] = (resp[3] & 0xF0) | 0x02; // RCODE=2 (SERVFAIL)
     }
     resp
-}
-
-// Re-export the client field access for dns_loop
-impl TorEngine {
-    pub fn client(&self) -> Arc<arti_client::TorClient<tor_rtcompat::PreferredRuntime>> {
-        self.client.clone()
-    }
 }
