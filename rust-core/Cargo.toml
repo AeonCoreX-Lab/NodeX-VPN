@@ -59,6 +59,15 @@ uuid        = { version = "1", features = ["v4"] }
 # DNS parsing (production DNS-over-Tor resolver)
 hickory-proto = { version = "0.25", default-features = false, features = ["tokio"] }
 
+# FIX: arti-client pulls rusqlite as a transitive dep (via tor-dirmgr cache).
+# By default rusqlite links to the system libsqlite3, which does NOT exist on
+# Android NDK or Windows CI runners - linker fails with:
+#   Android: "unable to find library -lsqlite3"
+#   Windows: "cannot open input file 'sqlite3.lib'"
+# Adding rusqlite here with the "bundled" feature forces cargo to compile
+# SQLite from source and link it statically - no system library needed.
+rusqlite = { version = "0.31", features = ["bundled"] }
+
 # ── Platform-specific ─────────────────────────────────────────────────────────
 [target.'cfg(target_os = "windows")'.dependencies]
 wintun      = "0.5"
