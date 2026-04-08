@@ -94,6 +94,10 @@ jni            = "0.21"
 android_logger = "0.14"
 openssl        = { version = "0.10", features = ["vendored"] }
 
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+
 [build-dependencies]
 uniffi = { version = "0.29", features = ["build"] }
 

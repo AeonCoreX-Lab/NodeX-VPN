@@ -90,28 +90,6 @@ jobs:
             generate src/nodex_vpn.udl --language swift \
             --out-dir ../iosApp/Sources/generated/
 
-      - name: iOS XCFramework
-        if:   matrix.target == 'aarch64-apple-ios'
-        run: |
-          mkdir -p rust-core/target/universal-ios artifacts
-          lipo -create \
-            rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
-            rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
-            -output rust-core/target/universal-ios/libnodex_vpn_core.a
-          xcodebuild -create-xcframework \
-            -library rust-core/target/universal-ios/libnodex_vpn_core.a \
-            -headers rust-core/src/ \
-            -output artifacts/NodexVpnCore.xcframework
-
-      - name: macOS universal dylib
-        if:   matrix.target == 'x86_64-apple-darwin'
-        run: |
-          mkdir -p rust-core/target/universal-macos
-          lipo -create \
-            rust-core/target/x86_64-apple-darwin/release/libnodex_vpn_core.dylib \
-            rust-core/target/aarch64-apple-darwin/release/libnodex_vpn_core.dylib \
-            -output rust-core/target/universal-macos/libnodex_vpn_core.dylib
-
       - uses: actions/upload-artifact@v4
         with:
           name: rust-core-${{ matrix.target }}
@@ -190,7 +168,28 @@ jobs:
 
       - name: Download iOS XCFramework
         uses: actions/download-artifact@v4
-        with: { name: rust-core-aarch64-apple-ios, path: artifacts/ }
+        with: { name: rust-core-aarch64-apple-ios, path: _ios_arm64/ }
+
+      # Also download simulator slices for the universal XCFramework
+      - uses: actions/download-artifact@v4
+        with: { name: rust-core-x86_64-apple-ios, path: _ios_x86_64/ }
+      - uses: actions/download-artifact@v4
+        with: { name: rust-core-aarch64-apple-ios-sim, path: _ios_arm64_sim/ }
+
+      # Build a fat simulator lib (arm64-sim + x86_64), then package XCFramework
+      - name: Create iOS XCFramework
+        run: |
+          mkdir -p _ios_sim_fat artifacts
+          lipo -create \
+            _ios_arm64_sim/libnodex_vpn_core.a \
+            _ios_x86_64/libnodex_vpn_core.a \
+            -output _ios_sim_fat/libnodex_vpn_core.a
+          xcodebuild -create-xcframework \
+            -library _ios_arm64/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -library _ios_sim_fat/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -output artifacts/NodexVpnCore.xcframework
 
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
@@ -237,8 +236,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
+
+      # Download each darwin slice into its own staging dir to avoid filename collisions
       - uses: actions/download-artifact@v4
-        with: { pattern: rust-core-*apple-darwin, merge-multiple: true, path: desktopApp/resources/macos/ }
+        with: { name: rust-core-x86_64-apple-darwin, path: _dylib_x86_64/ }
+      - uses: actions/download-artifact@v4
+        with: { name: rust-core-aarch64-apple-darwin, path: _dylib_aarch64/ }
+
+      # Merge into a universal dylib then place it where Gradle expects it
+      - name: Create macOS universal dylib (lipo)
+        run: |
+          mkdir -p desktopApp/resources/macos/
+          lipo -create \
+            _dylib_x86_64/libnodex_vpn_core.dylib \
+            _dylib_aarch64/libnodex_vpn_core.dylib \
+            -output desktopApp/resources/macos/libnodex_vpn_core.dylib
+
       - name: Build ICNS from iconset
         run: |
           iconutil -c icns desktopApp/resources/macos/AppIcon.iconset             -o desktopApp/resources/macos/icon.icns

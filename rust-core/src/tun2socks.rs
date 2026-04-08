@@ -102,9 +102,10 @@ pub async fn connect_socks5(
 }
 
 /// Bidirectional relay between two async streams with stats tracking.
+#[allow(dead_code)]
 pub async fn relay_streams<A, B>(
     mut a:    A,
-    mut b:    B,
+    b:    B,
     stats:    Arc<StatsTracker>,
 ) where
     A: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,

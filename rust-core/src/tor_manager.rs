@@ -42,7 +42,9 @@ pub struct TorEngine {
     bs_error:   Arc<RwLock<Option<String>>>,
     exit_ip:    Arc<RwLock<Option<String>>>,
     exit_iso:   Arc<RwLock<Option<String>>>,
+    #[allow(dead_code)]
     stats:      Arc<StatsTracker>,
+    #[allow(dead_code)]
     socks_addr: String,
     _socks_task: tokio::task::JoinHandle<()>,
     _bootstrap_task: tokio::task::JoinHandle<()>,
@@ -200,6 +202,7 @@ impl TorEngine {
         self.exit_ip.read().clone()
     }
 
+    #[allow(dead_code)]
     pub fn set_exit_ip(&self, ip: String) {
         *self.exit_ip.write() = Some(ip);
     }
@@ -233,9 +236,11 @@ impl TorEngine {
         // TorClient Drop handles async teardown
     }
 
+    #[allow(dead_code)]
     pub fn socks5_addr(&self) -> &str { &self.socks_addr }
 
     /// Get a stream prefs object with exit-country preference applied.
+    #[allow(dead_code)]
     pub fn stream_prefs(&self) -> StreamPrefs {
         let mut prefs = StreamPrefs::new();
         // arti 0.22 StreamPrefs: set country preference if configured
