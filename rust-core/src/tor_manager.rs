@@ -21,9 +21,10 @@ use arti_client::{
 };
 use tor_rtcompat::PreferredRuntime;
 
-// FIX: Import BridgeConfig from the correct public path (tor_guardmgr::bridge)
-// instead of the private re-export inside arti_client::config.
-use tor_guardmgr::bridge::BridgeConfig;
+// FIX: Import BridgeConfigBuilder directly — this is what b.bridges().bridges()
+// expects. Parsing the bridge line directly as BridgeConfigBuilder avoids the
+// missing From<BridgeConfig> impl for BridgeConfigBuilder in tor-guardmgr 0.22.
+use tor_guardmgr::bridge::BridgeConfigBuilder;
 
 use anyhow::Context;
 use log::{debug, info, warn, error};
@@ -170,13 +171,11 @@ impl TorEngine {
         if cfg.use_bridges && !bridges.is_empty() {
             info!("Configuring {} Tor bridge(s)", bridges.len());
             for line in &bridges {
-                // FIX: Parse using the correct public BridgeConfig type imported above,
-                // then push as BridgeConfigBuilder via the proper From/Into conversion.
-                // BridgeConfig implements Into<BridgeConfigBuilder> in tor-guardmgr 0.22.
-                match line.trim().parse::<BridgeConfig>() {
-                    Ok(bc)  => {
-                        b.bridges().bridges().push(bc.into());
-                    }
+                // FIX: Parse the bridge line directly as BridgeConfigBuilder.
+                // BridgeConfigBuilder implements FromStr in tor-guardmgr 0.22,
+                // so no .into() conversion is needed at all.
+                match line.trim().parse::<BridgeConfigBuilder>() {
+                    Ok(bcb) => { b.bridges().bridges().push(bcb); }
                     Err(e)  => warn!("Bad bridge line: {e}"),
                 }
             }
