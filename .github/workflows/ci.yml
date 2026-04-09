@@ -195,6 +195,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # FIX: gradlew loses execute bit on macOS runners after checkout
+      - run: chmod +x gradlew
       - name: Build KMP iOS framework
         run: ./gradlew :shared:linkReleaseFrameworkIosArm64
 
@@ -232,7 +234,7 @@ jobs:
         with: { pattern: rust-core-*apple-darwin, merge-multiple: true, path: desktopApp/resources/macos/ }
       - name: Build ICNS from iconset
         run: |
-          iconutil -c icns desktopApp/resources/macos/AppIcon.iconset             -o desktopApp/resources/macos/icon.icns
+          iconutil -c icns desktopApp/resources/macos/AppIcon.iconset -o desktopApp/resources/macos/icon.icns
           echo "✅ icon.icns created"
 
       - name: Update iconFile to use .icns

@@ -47,13 +47,15 @@ compose.desktop {
                 bundleID          = "com.nodex.vpn"
                 appStore          = false
                 dmgPackageVersion = "0.3.0"
-                // FIX: project.file() returns java.io.File but iconFile and
-                // entitlementsFile expect RegularFileProperty (Gradle Provider API).
-                // Use layout.projectDirectory.file() which returns the correct type.
-                iconFile          = project.layout.projectDirectory.file("resources/macos/AppIcon.iconset/icon_512x512@2x.png")
+                // FIX: Use .set() with layout.projectDirectory.file() so the
+                // inferred type is RegularFileProperty, not RegularFile!
+                // Previously used project.file() (wrong: returns java.io.File)
+                // then layout.projectDirectory.file() (wrong: returns RegularFile)
+                // Correct: assign via .set() which accepts RegularFile into the property.
+                iconFile.set(project.layout.projectDirectory.file("resources/macos/AppIcon.iconset/icon_512x512@2x.png"))
+                entitlementsFile.set(project.layout.projectDirectory.file("macos/entitlements.plist"))
                 // Embed the Rust dylib
                 jvmArgs += listOf("-Djava.library.path=Contents/MacOS")
-                entitlementsFile = project.layout.projectDirectory.file("macos/entitlements.plist")
                 // Include the Rust dylib in the bundle
                 appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             }
@@ -66,8 +68,7 @@ compose.desktop {
                 shortcut            = true
                 dirChooser          = true
                 perUserInstall      = false  // needs admin for TUN driver
-                // FIX: same as macOS — use layout.projectDirectory.file()
-                iconFile            = project.layout.projectDirectory.file("resources/windows/nodex.ico")
+                iconFile.set(project.layout.projectDirectory.file("resources/windows/nodex.ico"))
             }
 
             // ── Linux ──────────────────────────────────────────────────────────
@@ -75,16 +76,17 @@ compose.desktop {
                 debMaintainer       = "contact@nodex.vpn"
                 menuGroup           = "Network"
                 appCategory         = "Network"
-                // FIX: same as macOS — use layout.projectDirectory.file()
-                iconFile            = project.layout.projectDirectory.file("resources/linux/nodex.png")
-                // Post-install script to set CAP_NET_ADMIN
+                iconFile.set(project.layout.projectDirectory.file("resources/linux/nodex.png"))
                 debPackageVersion   = "0.1.0"
             }
 
-            // ── JVM args for all platforms ─────────────────────────────────────
+            // ── JVM args for the packaged app ──────────────────────────────────
+            // FIX: Removed -Xmx256m and -Xms64m — these are Gradle daemon args,
+            // not app JVM args. They belong in gradle.properties (org.gradle.jvmargs).
+            // Leaving them here caused: "Error: Could not find or load main class -Xmx64m"
+            // because Compose Desktop packaging tool misinterpreted them as the
+            // main class argument on macOS and Linux CI runners.
             jvmArgs += listOf(
-                "-Xmx256m",
-                "-Xms64m",
                 "--add-opens=java.base/java.lang=ALL-UNNAMED",
             )
 
