@@ -47,7 +47,6 @@ impl StatsTracker {
         self.latency_us.store((ms * 1000.0) as u64, Ordering::Relaxed);
     }
 
-    #[allow(dead_code)]
     pub fn set_exit_info(&self, country: String, ip: String) {
         *self.exit_country.lock() = country;
         *self.exit_ip.lock()      = ip;

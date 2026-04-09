@@ -3,7 +3,6 @@
 use crate::stats::StatsTracker;
 use std::sync::Arc;
 
-#[allow(dead_code)]
 pub async fn start_manual_proxy(addr: &str, stats: Arc<StatsTracker>) -> anyhow::Result<()> {
     use tokio::net::TcpListener;
     let listener = TcpListener::bind(addr).await?;
