@@ -128,6 +128,7 @@ jobs:
       
       - name: Decode Keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
+        run: chmod +x gradlew
 
 
       - name: Download Android JNI libs
@@ -138,6 +139,7 @@ jobs:
           path:           shared/src/androidMain/jniLibs/
 
       - uses: gradle/actions/setup-gradle@v4
+      
 
       - name: Build debug APK
         run:  ./gradlew :androidApp:assembleDebug
@@ -192,13 +194,15 @@ jobs:
 
       - name: Build iOS XCFramework
         run: |
-          mkdir -p rust-core/target/universal-ios artifacts
-          lipo -create \
-            rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
-            rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
-            -output rust-core/target/universal-ios/libnodex_vpn_core.a
+          mkdir -p artifacts
+          # FIX: xcodebuild -create-xcframework does NOT accept a lipo fat binary
+          # (error: "binaries with multiple platforms are not supported").
+          # Pass each architecture's .a as a separate -library argument instead.
+          # xcodebuild slices them correctly into the XCFramework on its own.
           xcodebuild -create-xcframework \
-            -library rust-core/target/universal-ios/libnodex_vpn_core.a \
+            -library rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -library rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
             -headers rust-core/src/ \
             -output artifacts/NodexVpnCore.xcframework
 
@@ -256,9 +260,13 @@ jobs:
 
       - name: Update iconFile to use .icns
         run: |
-          sed -i '' 's|resources/macos/AppIcon.iconset/icon_512x512@2x.png|resources/macos/icon.icns|g'             desktopApp/build.gradle.kts
+          # FIX: Update to match new layout.projectDirectory.file() path format
+          sed -i '' 's|AppIcon.iconset/icon_512x512@2x.png|icon.icns|g' \
+            desktopApp/build.gradle.kts
 
       - uses: gradle/actions/setup-gradle@v4
+      # FIX: gradlew may lose execute bit after checkout on some runners
+      - run: chmod +x gradlew
       - run: ./gradlew :desktopApp:packageDmg
       - uses: actions/upload-artifact@v4
         with: { name: macos-dmg, path: "desktopApp/build/compose/binaries/main/dmg/*.dmg" }
@@ -280,6 +288,8 @@ jobs:
       - name: Move Rust lib (keep icon)
         run: mv desktopApp/resources/linux/rust/libnodex_vpn_core.so desktopApp/resources/linux/ || true
       - uses: gradle/actions/setup-gradle@v4
+      # FIX: gradlew may lose execute bit after checkout on some runners
+      - run: chmod +x gradlew
       - run: ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm
       - uses: actions/upload-artifact@v4
         with:

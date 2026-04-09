@@ -47,10 +47,13 @@ compose.desktop {
                 bundleID          = "com.nodex.vpn"
                 appStore          = false
                 dmgPackageVersion = "0.3.0"
-                iconFile          = project.file("resources/macos/AppIcon.iconset/icon_512x512@2x.png")
+                // FIX: project.file() returns java.io.File but iconFile and
+                // entitlementsFile expect RegularFileProperty (Gradle Provider API).
+                // Use layout.projectDirectory.file() which returns the correct type.
+                iconFile          = project.layout.projectDirectory.file("resources/macos/AppIcon.iconset/icon_512x512@2x.png")
                 // Embed the Rust dylib
                 jvmArgs += listOf("-Djava.library.path=Contents/MacOS")
-                entitlementsFile = project.file("macos/entitlements.plist")
+                entitlementsFile = project.layout.projectDirectory.file("macos/entitlements.plist")
                 // Include the Rust dylib in the bundle
                 appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             }
@@ -63,8 +66,8 @@ compose.desktop {
                 shortcut            = true
                 dirChooser          = true
                 perUserInstall      = false  // needs admin for TUN driver
-                // WiX installer config
-                iconFile            = project.file("resources/nodex.ico")
+                // FIX: same as macOS — use layout.projectDirectory.file()
+                iconFile            = project.layout.projectDirectory.file("resources/windows/nodex.ico")
             }
 
             // ── Linux ──────────────────────────────────────────────────────────
@@ -72,7 +75,8 @@ compose.desktop {
                 debMaintainer       = "contact@nodex.vpn"
                 menuGroup           = "Network"
                 appCategory         = "Network"
-                iconFile            = project.file("resources/nodex.png")
+                // FIX: same as macOS — use layout.projectDirectory.file()
+                iconFile            = project.layout.projectDirectory.file("resources/linux/nodex.png")
                 // Post-install script to set CAP_NET_ADMIN
                 debPackageVersion   = "0.1.0"
             }
