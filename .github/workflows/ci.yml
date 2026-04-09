@@ -90,23 +90,11 @@ jobs:
             generate src/nodex_vpn.udl --language swift \
             --out-dir ../iosApp/Sources/generated/
 
-      - name: iOS XCFramework
-        if:   matrix.target == 'aarch64-apple-ios'
-        run: |
-          mkdir -p rust-core/target/universal-ios artifacts
-          lipo -create \
-            rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
-            rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
-            -output rust-core/target/universal-ios/libnodex_vpn_core.a
-          xcodebuild -create-xcframework \
-            -library rust-core/target/universal-ios/libnodex_vpn_core.a \
-            -headers rust-core/src/ \
-            -output artifacts/NodexVpnCore.xcframework
-
-      # FIX: lipo was removed from here. x86_64 and aarch64 matrix jobs run in
-      # parallel so aarch64 artifact is not available here. lipo is now done in
-      # the desktop-macos job which runs AFTER all rust-core jobs complete and
-      # downloads both darwin artifacts explicitly.
+      # FIX: iOS XCFramework lipo removed from rust-core matrix.
+      # aarch64-apple-ios and x86_64-apple-ios run in parallel — x86_64 artifact
+      # is not uploaded yet when aarch64 tries to lipo them together.
+      # XCFramework is now built in the ios job which runs AFTER all rust-core
+      # matrix jobs complete and downloads both iOS artifacts explicitly.
 
       - uses: actions/upload-artifact@v4
         with:
@@ -184,9 +172,35 @@ jobs:
       - name: Inject GoogleService-Info.plist (from GitHub Secret)
         run: echo '${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}' > iosApp/iosApp/GoogleService-Info.plist
 
-      - name: Download iOS XCFramework
+      # FIX: Download BOTH iOS artifacts (aarch64 + x86_64) and build the
+      # XCFramework here. Previously lipo ran inside the aarch64-apple-ios
+      # matrix job while x86_64-apple-ios was still compiling in parallel,
+      # so x86_64 .a was not uploaded yet → lipo: can't open input file.
+      # This ios job runs after ALL rust-core matrix jobs finish (needs: rust-core)
+      # so both artifacts are guaranteed to be available.
+      - name: Download aarch64-apple-ios artifact
         uses: actions/download-artifact@v4
-        with: { name: rust-core-aarch64-apple-ios, path: artifacts/ }
+        with:
+          name: rust-core-aarch64-apple-ios
+          path: rust-core/target/aarch64-apple-ios/release/
+
+      - name: Download x86_64-apple-ios artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-apple-ios
+          path: rust-core/target/x86_64-apple-ios/release/
+
+      - name: Build iOS XCFramework
+        run: |
+          mkdir -p rust-core/target/universal-ios artifacts
+          lipo -create \
+            rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
+            rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
+            -output rust-core/target/universal-ios/libnodex_vpn_core.a
+          xcodebuild -create-xcframework \
+            -library rust-core/target/universal-ios/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -output artifacts/NodexVpnCore.xcframework
 
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
