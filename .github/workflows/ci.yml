@@ -90,12 +90,6 @@ jobs:
             generate src/nodex_vpn.udl --language swift \
             --out-dir ../iosApp/Sources/generated/
 
-      # FIX: iOS XCFramework lipo removed from rust-core matrix.
-      # aarch64-apple-ios and x86_64-apple-ios run in parallel — x86_64 artifact
-      # is not uploaded yet when aarch64 tries to lipo them together.
-      # XCFramework is now built in the ios job which runs AFTER all rust-core
-      # matrix jobs complete and downloads both iOS artifacts explicitly.
-
       - uses: actions/upload-artifact@v4
         with:
           name: rust-core-${{ matrix.target }}
@@ -119,17 +113,14 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      # ── Inject google-services.json from GitHub Secret ─────────────────────
-      # To set up: Go to Firebase Console → Project Settings → Download google-services.json
-      # Then add the file contents as a GitHub secret named GOOGLE_SERVICES_JSON
-      # Settings → Secrets → Actions → New repository secret
       - name: Inject google-services.json (from GitHub Secret)
         run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > androidApp/google-services.json
-      
-      - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
-        run: chmod +x gradlew
 
+      # ✅ FIXED: Multi-line run step for Decode Keystore
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
+          chmod +x gradlew
 
       - name: Download Android JNI libs
         uses: actions/download-artifact@v4
@@ -139,7 +130,6 @@ jobs:
           path:           shared/src/androidMain/jniLibs/
 
       - uses: gradle/actions/setup-gradle@v4
-      
 
       - name: Build debug APK
         run:  ./gradlew :androidApp:assembleDebug
@@ -168,18 +158,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ── Inject GoogleService-Info.plist from GitHub Secret ─────────────────
-      # To set up: Firebase Console → Project Settings → iOS app → Download GoogleService-Info.plist
-      # Add file contents as GitHub secret named GOOGLE_SERVICE_INFO_PLIST
       - name: Inject GoogleService-Info.plist (from GitHub Secret)
         run: echo '${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}' > iosApp/iosApp/GoogleService-Info.plist
 
-      # FIX: Download BOTH iOS artifacts (aarch64 + x86_64) and build the
-      # XCFramework here. Previously lipo ran inside the aarch64-apple-ios
-      # matrix job while x86_64-apple-ios was still compiling in parallel,
-      # so x86_64 .a was not uploaded yet → lipo: can't open input file.
-      # This ios job runs after ALL rust-core matrix jobs finish (needs: rust-core)
-      # so both artifacts are guaranteed to be available.
       - name: Download aarch64-apple-ios artifact
         uses: actions/download-artifact@v4
         with:
@@ -195,10 +176,6 @@ jobs:
       - name: Build iOS XCFramework
         run: |
           mkdir -p artifacts
-          # FIX: xcodebuild -create-xcframework does NOT accept a lipo fat binary
-          # (error: "binaries with multiple platforms are not supported").
-          # Pass each architecture's .a as a separate -library argument instead.
-          # xcodebuild slices them correctly into the XCFramework on its own.
           xcodebuild -create-xcframework \
             -library rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
             -headers rust-core/src/ \
@@ -260,12 +237,10 @@ jobs:
 
       - name: Update iconFile to use .icns
         run: |
-          # FIX: Update to match new layout.projectDirectory.file() path format
           sed -i '' 's|AppIcon.iconset/icon_512x512@2x.png|icon.icns|g' \
             desktopApp/build.gradle.kts
 
       - uses: gradle/actions/setup-gradle@v4
-      # FIX: gradlew may lose execute bit after checkout on some runners
       - run: chmod +x gradlew
       - run: ./gradlew :desktopApp:packageDmg
       - uses: actions/upload-artifact@v4
@@ -288,7 +263,6 @@ jobs:
       - name: Move Rust lib (keep icon)
         run: mv desktopApp/resources/linux/rust/libnodex_vpn_core.so desktopApp/resources/linux/ || true
       - uses: gradle/actions/setup-gradle@v4
-      # FIX: gradlew may lose execute bit after checkout on some runners
       - run: chmod +x gradlew
       - run: ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm
       - uses: actions/upload-artifact@v4
