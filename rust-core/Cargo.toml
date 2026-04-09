@@ -19,7 +19,10 @@ path = "src/uniffi_bindgen.rs"
 
 # ── Core dependencies ─────────────────────────────────────────────────────────
 [dependencies]
-uniffi = { version = "0.29", features = ["tokio"] }
+# FIX: "cli" feature is required to expose uniffi::uniffi_bindgen_main()
+# used by the uniffi-bindgen binary target (src/uniffi_bindgen.rs).
+# Without it: error[E0425] cannot find function `uniffi_bindgen_main` in crate `uniffi`
+uniffi = { version = "0.29", features = ["tokio", "cli"] }
 
 # arti-client 0.22 (production-stable Tor implementation)
 arti-client = { version = "0.22", features = [
