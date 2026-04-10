@@ -128,7 +128,8 @@ tasks.register("copyDesktopRustLibs") {
         }
     }
 }
-tasks.named("packageDmg")  { dependsOn("copyDesktopRustLibs") }
-tasks.named("packageMsi")  { dependsOn("copyDesktopRustLibs") }
-tasks.named("packageDeb")  { dependsOn("copyDesktopRustLibs") }
-tasks.named("packageRpm")  { dependsOn("copyDesktopRustLibs") }
+// FIX: tasks.named() throws "Task not found" if the task does not exist on
+// the current platform (e.g. packageDmg does not exist on Windows/Linux).
+// tasks.matching() safely configures only tasks that actually exist.
+tasks.matching { it.name in listOf("packageDmg", "packageMsi", "packageDeb", "packageRpm") }
+    .configureEach { dependsOn("copyDesktopRustLibs") }
