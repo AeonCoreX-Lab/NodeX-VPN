@@ -49,8 +49,7 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            // No applicationIdSuffix — keep package name consistent with google-services.json
         }
     }
 

@@ -96,6 +96,9 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.ktor.client.cio)
+                // JNA — needed by PlatformVpnBridge.desktop.kt to load the Rust native library
+                implementation("net.java.dev.jna:jna:5.14.0")
+                implementation("net.java.dev.jna:jna-platform:5.14.0")
             }
         }
     }
