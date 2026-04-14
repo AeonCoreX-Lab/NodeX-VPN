@@ -46,7 +46,7 @@ compose.desktop {
             macOS {
                 bundleID          = "com.nodex.vpn"
                 appStore          = false
-                dmgPackageVersion = "0.3.0"
+                dmgPackageVersion = "1.0.0"
                 // FIX: Use .set() with layout.projectDirectory.file() so the
                 // inferred type is RegularFileProperty, not RegularFile!
                 // Previously used project.file() (wrong: returns java.io.File)

@@ -32,7 +32,7 @@ pub async fn start(
     info!("Linux: creating TUN device {TUN_NAME}");
 
     let mut cfg = tun::Configuration::default();
-    cfg.name(TUN_NAME)
+    cfg.tun_name(TUN_NAME)
        .address(TUN_ADDR.parse::<std::net::Ipv4Addr>().unwrap())
        .netmask("255.255.255.0".parse::<std::net::Ipv4Addr>().unwrap())
        .mtu(TUN_MTU)
