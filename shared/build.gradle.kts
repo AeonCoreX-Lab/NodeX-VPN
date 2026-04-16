@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    // CocoaPods integration — exposes pod() deps to iosMain source sets
+    id("org.jetbrains.kotlin.native.cocoapods")
 }
 
 kotlin {
@@ -19,18 +21,8 @@ kotlin {
     }
 
     // ── iOS ───────────────────────────────────────────────────────────────────
-    listOf(
-        iosX64(), iosArm64(), iosSimulatorArm64()
-    ).forEach { target ->
-        target.binaries.framework {
-            baseName   = "shared"
-            isStatic   = true
-            linkerOpts += listOf(
-                "-F${project.rootDir}/rust-core/target/universal-ios",
-                "-framework", "nodex_vpn_core",
-            )
-        }
-    }
+    // Framework configuration is declared in the cocoapods{} block below
+    iosX64(); iosArm64(); iosSimulatorArm64()
 
     // ── Desktop (JVM) ─────────────────────────────────────────────────────────
     jvm("desktop") {
@@ -76,6 +68,11 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.koin.android)
+                // Firebase + GMS — needed by AuthRepository.android.kt
+                implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+                implementation("com.google.firebase:firebase-auth-ktx")
+                implementation("com.google.android.gms:play-services-auth:21.3.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
             }
         }
 
@@ -108,6 +105,25 @@ kotlin {
 // This block configures the multiplatform resource system so that
 // shared/src/commonMain/composeResources/drawable/ic_nodex_logo.png
 // is accessible in all platforms via Res.drawable.ic_nodex_logo
+// ── CocoaPods — declares Firebase/Auth and GoogleSignIn pods for iosMain ──────
+cocoapods {
+    summary  = "NodeX VPN shared KMP library"
+    homepage = "https://github.com/AeonCoreX/NodeX-VPN"
+    version  = "1.0"
+    ios.deploymentTarget = "16.0"
+    // These pods are consumed by AuthRepository.ios.kt
+    pod("FirebaseAuth")  { version = "~> 11.6" }
+    pod("GoogleSignIn")  { version = "~> 8.0"  }
+    framework {
+        baseName  = "shared"
+        isStatic  = true
+        linkerOpts += listOf(
+            "-F${project.rootDir}/rust-core/target/universal-ios",
+            "-framework", "nodex_vpn_core",
+        )
+    }
+}
+
 compose.resources {
     publicResClass    = true          // Generates a public Res object
     packageOfResClass = "com.nodex.vpn.shared"

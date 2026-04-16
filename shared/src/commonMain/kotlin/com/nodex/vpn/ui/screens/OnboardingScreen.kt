@@ -221,7 +221,7 @@ private fun OnboardIllustration(page: OnboardPage) {
 
                 // Orbit dots
                 for (i in 0..2) {
-                    val a  = Math.toRadians((rot + i * 120.0))
+                    val a  = (rot + i * 120.0) * PI / 180.0
                     val ox = cx + r * 0.75f * cos(a).toFloat()
                     val oy = cy + r * 0.75f * sin(a).toFloat()
                     drawCircle(page.accent, 6f, Offset(ox, oy))
@@ -282,7 +282,7 @@ private fun OnboardIllustration(page: OnboardPage) {
                 // Speedometer arc
                 val sweepAngle = 200f
                 val startAngle = 180f - (sweepAngle - 180f) / 2
-                val speed      = (sin(Math.toRadians(rot.toDouble())) * 0.4 + 0.6).toFloat()
+                val speed      = (sin((rot.toDouble() * PI / 180.0)) * 0.4 + 0.6).toFloat()
 
                 drawArc(NodeXColors.DarkMatter, startAngle, sweepAngle, false,
                     topLeft = Offset(cx - r * 0.7f, cy - r * 0.7f), size = Size(r * 1.4f, r * 1.4f), style = Stroke(r * 0.12f, cap = StrokeCap.Round))
@@ -291,7 +291,7 @@ private fun OnboardIllustration(page: OnboardPage) {
                     topLeft = Offset(cx - r * 0.7f, cy - r * 0.7f), size = Size(r * 1.4f, r * 1.4f), style = Stroke(r * 0.12f, cap = StrokeCap.Round))
 
                 // Needle
-                val needleAngle = Math.toRadians((startAngle + sweepAngle * speed).toDouble())
+                val needleAngle = ((startAngle + sweepAngle * speed).toDouble() * PI / 180.0)
                 val nx = cx + r * 0.5f * cos(needleAngle).toFloat()
                 val ny = cy + r * 0.5f * sin(needleAngle).toFloat()
                 drawLine(page.accent, Offset(cx, cy), Offset(nx, ny), 3f, cap = StrokeCap.Round)
@@ -299,7 +299,7 @@ private fun OnboardIllustration(page: OnboardPage) {
 
                 // Speed ticks
                 repeat(11) { i ->
-                    val a   = Math.toRadians((startAngle + sweepAngle / 10 * i).toDouble())
+                    val a   = ((startAngle + sweepAngle / 10 * i).toDouble() * PI / 180.0)
                     val ir  = r * 0.58f; val or_ = r * 0.65f
                     drawLine(
                         if (i <= (speed * 10).toInt()) page.accent else NodeXColors.TextMuted.copy(0.3f),

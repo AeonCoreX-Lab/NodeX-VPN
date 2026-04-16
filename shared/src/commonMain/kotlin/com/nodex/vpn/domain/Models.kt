@@ -33,12 +33,18 @@ data class ServerNode(
     val supportsObfs4:  Boolean,
 ) {
     val flagEmoji: String get() {
-        // Convert ISO country code to regional indicator symbols
+        // Convert ISO country code to regional indicator symbols (KMP-safe surrogate pair encoding)
         val base = 0x1F1E6 - 'A'.code
         return countryCode.uppercase()
             .filter { it.isLetter() }
             .take(2)
-            .map { String(Character.toChars(base + it.code)) }
+            .map { ch ->
+                val cp = base + ch.code
+                // Regional indicator symbols are in supplementary plane — encode as surrogate pair
+                val hi = ((cp - 0x10000) shr 10) + 0xD800
+                val lo = ((cp - 0x10000) and 0x3FF) + 0xDC00
+                "${hi.toChar()}${lo.toChar()}"
+            }
             .joinToString("")
     }
     val latencyLabel: String get() = when {
@@ -72,21 +78,31 @@ data class VpnStats(
         val h = uptimeSeconds / 3600
         val m = (uptimeSeconds % 3600) / 60
         val s = uptimeSeconds % 60
-        return "%02d:%02d:%02d".format(h, m, s)
+        return "${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}"
     }
     val sendRateLabel: String  get() = formatRate(sendRateBps)
     val recvRateLabel: String  get() = formatRate(recvRateBps)
     val totalDataLabel: String get() = formatBytes(bytesSent + bytesReceived)
 
+    private fun Double.fmt1(): String {
+        val v = kotlin.math.round(this * 10) / 10.0
+        val i = v.toLong(); val d = kotlin.math.round((v - i) * 10).toLong()
+        return "$i.$d"
+    }
+    private fun Double.fmt2(): String {
+        val v = kotlin.math.round(this * 100) / 100.0
+        val i = v.toLong(); val d = kotlin.math.round((v - i) * 100).toLong()
+        return "$i.${d.toString().padStart(2,'0')}"
+    }
     private fun formatRate(bps: Long): String = when {
-        bps > 1_000_000 -> "%.1f MB/s".format(bps / 1_000_000.0)
-        bps > 1_000     -> "%.1f KB/s".format(bps / 1_000.0)
+        bps > 1_000_000 -> "${(bps / 1_000_000.0).fmt1()} MB/s"
+        bps > 1_000     -> "${(bps / 1_000.0).fmt1()} KB/s"
         else            -> "$bps B/s"
     }
     private fun formatBytes(b: Long): String = when {
-        b > 1_073_741_824 -> "%.2f GB".format(b / 1_073_741_824.0)
-        b > 1_048_576     -> "%.1f MB".format(b / 1_048_576.0)
-        b > 1_024         -> "%.1f KB".format(b / 1_024.0)
+        b > 1_073_741_824 -> "${(b / 1_073_741_824.0).fmt2()} GB"
+        b > 1_048_576     -> "${(b / 1_048_576.0).fmt1()} MB"
+        b > 1_024         -> "${(b / 1_024.0).fmt1()} KB"
         else              -> "$b B"
     }
 }

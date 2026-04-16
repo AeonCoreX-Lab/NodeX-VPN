@@ -3,12 +3,20 @@ package com.nodex.vpn.auth
 
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.*
 
-// FirebaseAuth iOS SDK is accessed via Objective-C interop
-// cocoapods: pod 'Firebase/Auth' + pod 'GoogleSignIn'
-import cocoapods.FirebaseAuth.*
-import cocoapods.GoogleSignIn.*
+// FirebaseAuth + GoogleSignIn are accessed via Objective-C interop through CocoaPods.
+// The cocoapods {} plugin block in shared/build.gradle.kts declares:
+//   pod("FirebaseAuth")
+//   pod("GoogleSignIn")
+// which makes the cocoapods.FirebaseAuth.* and cocoapods.GoogleSignIn.* packages available.
+import cocoapods.FirebaseAuth.FIRAuth
+import cocoapods.FirebaseAuth.FIRAuthStateDidChangeListenerHandle
+import cocoapods.FirebaseAuth.FIRGoogleAuthProvider
+import cocoapods.FirebaseAuth.FIRUser
+import cocoapods.GoogleSignIn.GIDSignIn
+import platform.UIKit.UIApplication
 
 actual class AuthRepository actual constructor() {
 
@@ -30,48 +38,53 @@ actual class AuthRepository actual constructor() {
     actual fun currentUser(): AuthUser? = auth.currentUser()?.toAuthUser()
 
     actual suspend fun signInWithEmail(email: String, password: String): AuthResult =
-        suspendFirebase { cont ->
+        suspendCancellableCoroutine { cont ->
             auth.signInWithEmail(email, password = password) { result, error ->
-                if (error != null) cont(null, error.localizedDescription)
-                else cont(result?.user()?.toAuthUser(), null)
+                if (error != null) cont.resume(AuthResult.Failure(error.localizedDescription ?: "Sign-in failed")) {}
+                else cont.resume(AuthResult.Success(result?.user()?.toAuthUser()
+                    ?: return@signInWithEmail cont.resume(AuthResult.Failure("No user")) {})) {}
             }
         }
 
     actual suspend fun signUpWithEmail(email: String, password: String): AuthResult =
-        suspendFirebase { cont ->
+        suspendCancellableCoroutine { cont ->
             auth.createUserWithEmail(email, password = password) { result, error ->
-                if (error != null) cont(null, error.localizedDescription)
+                if (error != null) cont.resume(AuthResult.Failure(error.localizedDescription ?: "Sign-up failed")) {}
                 else {
                     result?.user()?.sendEmailVerificationWithCompletion(null)
-                    cont(result?.user()?.toAuthUser(), null)
+                    cont.resume(AuthResult.Success(result?.user()?.toAuthUser()
+                        ?: return@createUserWithEmail cont.resume(AuthResult.Failure("No user")) {})) {}
                 }
             }
         }
 
     actual suspend fun signInWithGoogle(): AuthResult =
-        suspendFirebase { cont ->
-            // GIDSignIn requires a UIViewController — retrieved from shared iOS context
+        suspendCancellableCoroutine { cont ->
             val rootVC = UIApplication.sharedApplication.keyWindow?.rootViewController
-                ?: run { cont(null, "No root view controller"); return@suspendFirebase }
+                ?: return@suspendCancellableCoroutine cont.resume(AuthResult.Failure("No root view controller")) {}
 
             GIDSignIn.sharedInstance().signInWithPresentingViewController(rootVC) { result, error ->
-                if (error != null) { cont(null, error.localizedDescription); return@signInWithPresentingViewController }
+                if (error != null) {
+                    cont.resume(AuthResult.Failure(error.localizedDescription ?: "Google sign-in failed")) {}
+                    return@signInWithPresentingViewController
+                }
                 val idToken = result?.user?.idToken?.tokenString
-                    ?: run { cont(null, "Missing Google ID token"); return@signInWithPresentingViewController }
-                val accessToken = result?.user?.accessToken?.tokenString ?: ""
+                    ?: return@signInWithPresentingViewController cont.resume(AuthResult.Failure("Missing Google ID token")) {}
+                val accessToken = result.user?.accessToken?.tokenString ?: ""
                 val credential  = FIRGoogleAuthProvider.credentialWithIDToken(idToken, accessToken = accessToken)
                 auth.signInWithCredential(credential) { authResult, err ->
-                    if (err != null) cont(null, err.localizedDescription)
-                    else cont(authResult?.user()?.toAuthUser(), null)
+                    if (err != null) cont.resume(AuthResult.Failure(err.localizedDescription ?: "Credential sign-in failed")) {}
+                    else cont.resume(AuthResult.Success(authResult?.user()?.toAuthUser()
+                        ?: return@signInWithCredential cont.resume(AuthResult.Failure("No user")) {})) {}
                 }
             }
         }
 
     actual suspend fun resetPassword(email: String): AuthResult =
-        suspendFirebase { cont ->
+        suspendCancellableCoroutine { cont ->
             auth.sendPasswordResetWithEmail(email) { error ->
-                if (error != null) cont(null, error.localizedDescription)
-                else cont(AuthUser("", email, null, null), null)
+                if (error != null) cont.resume(AuthResult.Failure(error.localizedDescription ?: "Reset failed")) {}
+                else cont.resume(AuthResult.Success(AuthUser("", email, null, null))) {}
             }
         }
 
@@ -81,11 +94,11 @@ actual class AuthRepository actual constructor() {
     }
 
     actual suspend fun deleteAccount(): AuthResult =
-        suspendFirebase { cont ->
+        suspendCancellableCoroutine { cont ->
             auth.currentUser()?.deleteWithCompletion { error ->
-                if (error != null) cont(null, error.localizedDescription)
-                else cont(AuthUser("", null, null, null), null)
-            } ?: cont(null, "No current user")
+                if (error != null) cont.resume(AuthResult.Failure(error.localizedDescription ?: "Delete failed")) {}
+                else cont.resume(AuthResult.Success(AuthUser("", null, null, null))) {}
+            } ?: cont.resume(AuthResult.Failure("No current user")) {}
         }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -97,13 +110,4 @@ actual class AuthRepository actual constructor() {
         isEmailVerified = isEmailVerified(),
         provider        = if (providerID().contains("google")) AuthProvider.Google else AuthProvider.Email,
     )
-
-    private suspend fun suspendFirebase(
-        block: ((AuthUser?, String?) -> Unit) -> Unit
-    ): AuthResult = kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-        block { user, error ->
-            if (user != null) cont.resume(AuthResult.Success(user)) {}
-            else cont.resume(AuthResult.Failure(error ?: "Auth failed")) {}
-        }
-    }
 }

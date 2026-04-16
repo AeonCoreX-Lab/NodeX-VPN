@@ -12,19 +12,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.nodex.vpn.auth.AuthState
 import com.nodex.vpn.ui.theme.NodeXColors
-
-// ── Compose Multiplatform Resource import ─────────────────────────────────────
-// Your logo file goes here:
-//   shared/src/commonMain/composeResources/drawable/ic_nodex_logo.png
-// After adding the file and syncing Gradle, this import resolves automatically.
-import com.nodex.vpn.shared.generated.resources.Res
-import com.nodex.vpn.shared.generated.resources.ic_nodex_logo
-import org.jetbrains.compose.resources.painterResource
 
 import kotlinx.coroutines.delay
 import kotlin.math.*
@@ -206,15 +197,24 @@ fun SplashScreen(
                     )
                 }
 
-                // The actual PNG logo
-                Image(
-                    painter            = painterResource(Res.drawable.ic_nodex_logo),
-                    contentDescription = "NodeX VPN",
-                    contentScale       = ContentScale.Fit,
-                    modifier           = Modifier
-                        .size(120.dp)
-                        .scale(logoPulse * 0.97f + 0.03f), // subtle breathing effect
-                )
+                // Canvas-drawn NodeX logo (NX monogram)
+                Canvas(modifier = Modifier.size(120.dp)) {
+                    val s = size.minDimension
+                    // Background circle
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(NodeXColors.CyanGlow.copy(0.3f), NodeXColors.PurpleNeon.copy(0.15f)),
+                        ),
+                        radius = s / 2,
+                    )
+                    // "NX" strokes drawn as lines
+                    val stroke = Stroke(width = s * 0.07f, cap = StrokeCap.Round)
+                    val p = s * 0.22f
+                    // N: left-down-right diagonal-up
+                    drawLine(NodeXColors.CyanGlow, Offset(p, p), Offset(p, s - p), s * 0.07f, StrokeCap.Round)
+                    drawLine(NodeXColors.CyanGlow, Offset(p, p), Offset(s - p, s - p), s * 0.07f, StrokeCap.Round)
+                    drawLine(NodeXColors.CyanGlow, Offset(s - p, p), Offset(s - p, s - p), s * 0.07f, StrokeCap.Round)
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -318,7 +318,7 @@ private fun DrawScope.drawOrbitNode(
     angleDeg: Float,
     color:    Color,
 ) {
-    val rad = Math.toRadians(angleDeg.toDouble())
+    val rad = angleDeg.toDouble() * PI / 180.0
     val x   = cx + radius * cos(rad).toFloat()
     val y   = cy + radius * sin(rad).toFloat()
     drawCircle(color, 5f, Offset(x, y))

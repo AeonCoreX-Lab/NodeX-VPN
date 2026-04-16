@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.nodex.vpn.domain.*
@@ -178,4 +177,3 @@ private fun ServerRow(node: ServerNode, isSelected: Boolean, compact: Boolean, o
 }
 
 private enum class SortBy(val label: String) { Latency("By Speed"), Load("By Load"), Country("By Country") }
-private fun Modifier.clip(shape: androidx.compose.ui.graphics.Shape) = graphicsLayer { clip = true; this.shape = shape }

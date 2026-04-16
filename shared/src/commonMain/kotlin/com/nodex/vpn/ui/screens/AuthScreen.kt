@@ -284,10 +284,10 @@ private fun SuccessCard(message: String) {
 
 private fun DrawScope.drawAuthBg(angle: Float) {
     val w = size.width; val h = size.height
-    val cx1 = w*0.2f + w*0.3f* sin(Math.toRadians(angle.toDouble())).toFloat()
-    val cy1 = h*0.2f + h*0.2f* cos(Math.toRadians(angle.toDouble())).toFloat()
-    val cx2 = w*0.8f + w*0.2f* sin(Math.toRadians((angle+120).toDouble())).toFloat()
-    val cy2 = h*0.7f + h*0.15f*cos(Math.toRadians((angle+120).toDouble())).toFloat()
+    val cx1 = w*0.2f + w*0.3f* sin(angle.toDouble() * PI / 180.0).toFloat()
+    val cy1 = h*0.2f + h*0.2f* cos(angle.toDouble() * PI / 180.0).toFloat()
+    val cx2 = w*0.8f + w*0.2f* sin((angle+120).toDouble() * PI / 180.0).toFloat()
+    val cy2 = h*0.7f + h*0.15f*cos((angle+120).toDouble() * PI / 180.0).toFloat()
     drawCircle(NodeXColors.CyanGlow.copy(0.05f),  w*0.5f, Offset(cx1, cy1))
     drawCircle(NodeXColors.PurpleNeon.copy(0.04f), w*0.45f, Offset(cx2, cy2))
     val step = 45f

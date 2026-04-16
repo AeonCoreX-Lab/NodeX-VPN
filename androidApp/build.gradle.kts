@@ -29,6 +29,16 @@ android {
         }
     }
 
+    // KMP places Android source at src/androidMain by default but the app module
+    // keeps sources in the traditional src/main location.
+    sourceSets {
+        getByName("main") {
+            manifest.srcFile("src/main/AndroidManifest.xml")
+            java.srcDirs("src/main/kotlin")
+            res.srcDirs("src/main/res")
+        }
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file("nodex-release.jks")
