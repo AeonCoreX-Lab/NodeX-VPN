@@ -21,7 +21,7 @@ kotlin {
     }
 
     // ── iOS ───────────────────────────────────────────────────────────────────
-    // Framework configuration is declared in the cocoapods{} block below
+    // Targets declared here; framework config lives in cocoapods{} below
     iosX64(); iosArm64(); iosSimulatorArm64()
 
     // ── Desktop (JVM) ─────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
 
-                // ✅ Resources — needed for painterResource(Res.drawable.xxx)
+                // Resources — needed for Compose Multiplatform resource system
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
 
@@ -99,35 +99,33 @@ kotlin {
             }
         }
     }
-}
 
-// ── Compose Resources configuration ──────────────────────────────────────────
-// This block configures the multiplatform resource system so that
-// shared/src/commonMain/composeResources/drawable/ic_nodex_logo.png
-// is accessible in all platforms via Res.drawable.ic_nodex_logo
-// ── CocoaPods — declares Firebase/Auth and GoogleSignIn pods for iosMain ──────
-cocoapods {
-    summary  = "NodeX VPN shared KMP library"
-    homepage = "https://github.com/AeonCoreX/NodeX-VPN"
-    version  = "1.0"
-    ios.deploymentTarget = "16.0"
-    // These pods are consumed by AuthRepository.ios.kt
-    pod("FirebaseAuth")  { version = "~> 11.6" }
-    pod("GoogleSignIn")  { version = "~> 8.0"  }
-    framework {
-        baseName  = "shared"
-        isStatic  = true
-        linkerOpts += listOf(
-            "-F${project.rootDir}/rust-core/target/universal-ios",
-            "-framework", "nodex_vpn_core",
-        )
+    // ── CocoaPods ─────────────────────────────────────────────────────────────
+    // IMPORTANT: cocoapods{} is an extension on KotlinMultiplatformExtension,
+    // so it must live INSIDE kotlin{}, not at the top level.
+    cocoapods {
+        summary  = "NodeX VPN shared KMP library"
+        homepage = "https://github.com/AeonCoreX/NodeX-VPN"
+        version  = "1.0"
+        ios.deploymentTarget = "16.0"
+        pod("FirebaseAuth") { version = "~> 11.6" }
+        pod("GoogleSignIn") { version = "~> 8.0"  }
+        framework {
+            baseName  = "shared"
+            isStatic  = true
+            linkerOpts += listOf(
+                "-F${project.rootDir}/rust-core/target/universal-ios",
+                "-framework", "nodex_vpn_core",
+            )
+        }
     }
 }
 
+// ── Compose Resources configuration ──────────────────────────────────────────
 compose.resources {
-    publicResClass    = true          // Generates a public Res object
+    publicResClass    = true
     packageOfResClass = "com.nodex.vpn.shared"
-    generateResClass  = always        // Always regenerate on sync
+    generateResClass  = always
 }
 
 android {
