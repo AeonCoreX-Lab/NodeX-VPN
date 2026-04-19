@@ -6,6 +6,7 @@ import android.content.Intent
 import com.google.android.gms.auth.api.signin.*
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.*
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
@@ -23,10 +24,15 @@ actual class AuthRepository actual constructor() {
         var googleSignInCallback: ((GoogleSignInAccount?, Exception?) -> Unit)? = null
 
         private val googleSignInClient: GoogleSignInClient by lazy {
+            // Use getIdentifier to avoid cross-module R class reference:
+            // com.nodex.vpn.android.R is in :androidApp module, not accessible from :shared.
+            val webClientId = applicationContext.getString(
+                applicationContext.resources.getIdentifier(
+                    "default_web_client_id", "string", applicationContext.packageName
+                )
+            )
             val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(applicationContext.getString(
-                    com.nodex.vpn.android.R.string.default_web_client_id
-                ))
+                .requestIdToken(webClientId)
                 .requestEmail()
                 .build()
             GoogleSignIn.getClient(applicationContext, options)

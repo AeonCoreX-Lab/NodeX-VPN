@@ -69,10 +69,11 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.koin.android)
                 // Firebase + GMS — needed by AuthRepository.android.kt
-                implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-                implementation("com.google.firebase:firebase-auth-ktx")
-                implementation("com.google.android.gms:play-services-auth:21.3.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+                // FIX: Use libs.* catalog entries to avoid deprecated platform(Any) overload (KT-58759)
+                implementation(platform(libs.firebase.bom))
+                implementation(libs.firebase.auth)
+                implementation(libs.google.play.auth)
+                implementation(libs.kotlinx.coroutines.play)
             }
         }
 

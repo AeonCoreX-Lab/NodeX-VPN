@@ -103,10 +103,12 @@ compose.desktop {
 // ── Task: copy Rust native libs into resources before packaging ───────────────
 tasks.register("copyDesktopRustLibs") {
     val libsMap = mapOf(
-        "x86_64-unknown-linux-gnu"  to ("linux"   to "libnodex_vpn_core.so"),
-        "x86_64-apple-darwin"       to ("macos"   to "libnodex_vpn_core.dylib"),
-        "aarch64-apple-darwin"      to ("macos"   to "libnodex_vpn_core.dylib"),
-        "x86_64-pc-windows-msvc"    to ("windows" to "nodex_vpn_core.dll"),
+        "x86_64-unknown-linux-gnu"   to ("linux"   to "libnodex_vpn_core.so"),
+        "aarch64-unknown-linux-gnu"  to ("linux"   to "libnodex_vpn_core.so"),
+        "x86_64-apple-darwin"        to ("macos"   to "libnodex_vpn_core.dylib"),
+        "aarch64-apple-darwin"       to ("macos"   to "libnodex_vpn_core.dylib"),
+        "x86_64-pc-windows-msvc"     to ("windows" to "nodex_vpn_core.dll"),
+        "aarch64-pc-windows-msvc"    to ("windows" to "nodex_vpn_core.dll"),
     )
     doLast {
         libsMap.forEach { (triple, pair) ->

@@ -12,7 +12,7 @@ env:
   RUST_BACKTRACE:   1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Job 1: Build Rust core for all targets
+# Job 1: Build Rust core for ALL targets
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
 
@@ -22,16 +22,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { target: aarch64-linux-android,     os: ubuntu-24.04, group: android }
-          - { target: armv7-linux-androideabi,   os: ubuntu-24.04, group: android }
-          - { target: x86_64-linux-android,      os: ubuntu-24.04, group: android }
-          - { target: aarch64-apple-ios,         os: macos-15,     group: ios     }
-          - { target: x86_64-apple-ios,          os: macos-15,     group: ios     }
-          - { target: aarch64-apple-ios-sim,     os: macos-15,     group: ios     }
-          - { target: x86_64-apple-darwin,       os: macos-15,     group: macos   }
-          - { target: aarch64-apple-darwin,      os: macos-15,     group: macos   }
-          - { target: x86_64-unknown-linux-gnu,  os: ubuntu-24.04, group: linux   }
-          - { target: x86_64-pc-windows-msvc,    os: windows-2022, group: windows }
+          # ── Android (4 ABIs) ───────────────────────────────────────────────
+          - { target: aarch64-linux-android,     os: ubuntu-24.04,     group: android }
+          - { target: armv7-linux-androideabi,   os: ubuntu-24.04,     group: android }
+          - { target: x86_64-linux-android,      os: ubuntu-24.04,     group: android }
+          - { target: i686-linux-android,        os: ubuntu-24.04,     group: android }
+          # ── iOS (device + simulators) ──────────────────────────────────────
+          - { target: aarch64-apple-ios,         os: macos-15,         group: ios     }
+          - { target: x86_64-apple-ios,          os: macos-15,         group: ios     }
+          - { target: aarch64-apple-ios-sim,     os: macos-15,         group: ios     }
+          # ── macOS (x64 + arm64) ───────────────────────────────────────────
+          - { target: x86_64-apple-darwin,       os: macos-15,         group: macos   }
+          - { target: aarch64-apple-darwin,      os: macos-15,         group: macos   }
+          # ── Linux (x64 + arm64) ───────────────────────────────────────────
+          - { target: x86_64-unknown-linux-gnu,  os: ubuntu-24.04,     group: linux   }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm, group: linux   }
+          # ── Windows (x64 + arm64) ─────────────────────────────────────────
+          - { target: x86_64-pc-windows-msvc,    os: windows-2022,     group: windows }
+          - { target: aarch64-pc-windows-msvc,   os: windows-11-arm,   group: windows }
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -55,8 +63,9 @@ jobs:
         uses: nttld/setup-ndk@v1
         with: { ndk-version: r28b }
 
-      - run: cargo install cargo-ndk --locked
-        if:  matrix.group == 'android'
+      - name: Install cargo-ndk
+        if:   matrix.group == 'android'
+        run:  cargo install cargo-ndk --locked
 
       - name: Linux build deps
         if:   matrix.group == 'linux'
@@ -100,6 +109,8 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Job 2: Android APK + AAB
+#   Each ABI downloaded separately into jniLibs/<abi>/ — flat download breaks
+#   mergeDebugNativeLibs with "not an ABI" error.
 # ─────────────────────────────────────────────────────────────────────────────
   android:
     name: "Android APK + AAB"
@@ -113,21 +124,37 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - name: Inject google-services.json (from GitHub Secret)
+      - name: Inject google-services.json
         run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > androidApp/google-services.json
 
-      # ✅ FIXED: Multi-line run step for Decode Keystore
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
           chmod +x gradlew
 
-      - name: Download Android JNI libs
+      - name: Download JNI lib — arm64-v8a  (aarch64-linux-android)
         uses: actions/download-artifact@v4
         with:
-          pattern:        rust-core-*android*
-          merge-multiple: true
-          path:           shared/src/androidMain/jniLibs/
+          name: rust-core-aarch64-linux-android
+          path: shared/src/androidMain/jniLibs/arm64-v8a/
+
+      - name: Download JNI lib — armeabi-v7a (armv7-linux-androideabi)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-armv7-linux-androideabi
+          path: shared/src/androidMain/jniLibs/armeabi-v7a/
+
+      - name: Download JNI lib — x86_64     (x86_64-linux-android)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-linux-android
+          path: shared/src/androidMain/jniLibs/x86_64/
+
+      - name: Download JNI lib — x86        (i686-linux-android)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-i686-linux-android
+          path: shared/src/androidMain/jniLibs/x86/
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -158,7 +185,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject GoogleService-Info.plist (from GitHub Secret)
+      - name: Inject GoogleService-Info.plist
         run: echo '${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}' > iosApp/iosApp/GoogleService-Info.plist
 
       - name: Download aarch64-apple-ios artifact
@@ -195,10 +222,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # FIX: gradlew loses execute bit on macOS runners after checkout
       - run: chmod +x gradlew
+      # FIX: CocoaPods integration generates linkPodRelease* tasks, not linkRelease*.
+      # linkReleaseFrameworkIosArm64 is ambiguous — partial-name match finds both
+      # linkPodReleaseFrameworkIosArm64 AND linkPodReleaseFrameworkIosSimulatorArm64.
       - name: Build KMP iOS framework
-        run: ./gradlew :shared:linkReleaseFrameworkIosArm64
+        run: ./gradlew :shared:linkPodReleaseFrameworkIosArm64
 
       - name: Xcode archive
         run: |
@@ -220,7 +249,7 @@ jobs:
         with: { name: ios-ipa, path: "build/ipa/*.ipa" }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Job 4: Desktop packages
+# Job 4: Desktop macOS DMG
 # ─────────────────────────────────────────────────────────────────────────────
   desktop-macos:
     name: "Desktop macOS DMG"
@@ -228,14 +257,22 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      - uses: actions/download-artifact@v4
-        with: { pattern: rust-core-*apple-darwin, merge-multiple: true, path: desktopApp/resources/macos/ }
+
+      - name: Download macOS Rust libs (x64 + arm64)
+        uses: actions/download-artifact@v4
+        with:
+          pattern:        rust-core-*apple-darwin
+          merge-multiple: true
+          path:           desktopApp/resources/macos/
+
       - name: Build ICNS from iconset
         run: |
-          iconutil -c icns desktopApp/resources/macos/AppIcon.iconset -o desktopApp/resources/macos/icon.icns
-          echo "✅ icon.icns created"
+          iconutil -c icns desktopApp/resources/macos/AppIcon.iconset \
+            -o desktopApp/resources/macos/icon.icns
+          echo "icon.icns created"
 
       - name: Update iconFile to use .icns
         run: |
@@ -245,52 +282,88 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
       - run: ./gradlew :desktopApp:packageDmg
+
       - uses: actions/upload-artifact@v4
         with: { name: macos-dmg, path: "desktopApp/build/compose/binaries/main/dmg/*.dmg" }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 5: Desktop Linux DEB + RPM  (x64 on ubuntu-24.04, arm64 on ubuntu-24.04-arm)
+# ─────────────────────────────────────────────────────────────────────────────
   desktop-linux:
-    name: "Desktop Linux DEB+RPM"
+    name: "Desktop Linux ${{ matrix.arch }} DEB+RPM"
     needs: rust-core
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64,   runner: ubuntu-24.04,     rust-target: x86_64-unknown-linux-gnu  }
+          - { arch: arm64, runner: ubuntu-24.04-arm,  rust-target: aarch64-unknown-linux-gnu }
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
+
       - run: sudo apt-get install -y rpm
-      - name: Download Linux Rust libs
+
+      - name: Download Linux Rust lib (${{ matrix.arch }})
         uses: actions/download-artifact@v4
         with:
-          name: rust-core-x86_64-unknown-linux-gnu
+          name: rust-core-${{ matrix.rust-target }}
           path: desktopApp/resources/linux/rust/
-      - name: Move Rust lib (keep icon)
-        run: mv desktopApp/resources/linux/rust/libnodex_vpn_core.so desktopApp/resources/linux/ || true
+
+      - name: Place native lib for packaging
+        run: |
+          mv desktopApp/resources/linux/rust/libnodex_vpn_core.so \
+             desktopApp/resources/linux/libnodex_vpn_core.so || true
+
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
       - run: ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm
+
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-packages
+          name: linux-packages-${{ matrix.arch }}
           path: |
             desktopApp/build/compose/binaries/main/deb/*.deb
             desktopApp/build/compose/binaries/main/rpm/*.rpm
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 6: Desktop Windows MSI  (x64 on windows-2022, arm64 on windows-11-arm)
+# ─────────────────────────────────────────────────────────────────────────────
   desktop-windows:
-    name: "Desktop Windows MSI"
+    name: "Desktop Windows ${{ matrix.arch }} MSI"
     needs: rust-core
-    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64,   runner: windows-2022,   rust-target: x86_64-pc-windows-msvc  }
+          - { arch: arm64, runner: windows-11-arm,  rust-target: aarch64-pc-windows-msvc }
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      - uses: actions/download-artifact@v4
-        with: { name: rust-core-x86_64-pc-windows-msvc, path: desktopApp/resources/windows/ }
+
+      - name: Download Windows Rust lib (${{ matrix.arch }})
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-${{ matrix.rust-target }}
+          path: desktopApp/resources/windows/
+
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :desktopApp:packageMsi
+
       - uses: actions/upload-artifact@v4
-        with: { name: windows-msi, path: "desktopApp/build/compose/binaries/main/msi/*.msi" }
+        with:
+          name: windows-msi-${{ matrix.arch }}
+          path: desktopApp/build/compose/binaries/main/msi/*.msi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Job 5: GitHub Release
+# Job 7: GitHub Release  (only on version tags)
 # ─────────────────────────────────────────────────────────────────────────────
   release:
     name: "GitHub Release"
@@ -300,10 +373,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: release-artifacts/ }
+
       - uses: softprops/action-gh-release@v2
         with:
-          files:                 release-artifacts/**/*
+          files:                  release-artifacts/**/*
           generate_release_notes: true
-          prerelease:            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
+          prerelease:             ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
