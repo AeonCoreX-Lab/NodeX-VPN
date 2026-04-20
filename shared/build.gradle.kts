@@ -69,8 +69,11 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.koin.android)
                 // Firebase + GMS — needed by AuthRepository.android.kt
-                // FIX: Use libs.* catalog entries to avoid deprecated platform(Any) overload (KT-58759)
-                implementation(platform(libs.firebase.bom))
+                // NOTE: platform() inside KMP sourceSets does NOT accept Provider<MinimalExternalModuleDependency>
+                // (i.e. libs.firebase.bom directly). Passing a Provider causes:
+                //   "Cannot convert map(valueof(DependencyValueSource)) to type Dependency"
+                // Fix: resolve version eagerly via libs.versions.firebaseBom.get() and pass a String.
+                implementation(platform("com.google.firebase:firebase-bom:${libs.versions.firebaseBom.get()}"))
                 implementation(libs.firebase.auth)
                 implementation(libs.google.play.auth)
                 implementation(libs.kotlinx.coroutines.play)

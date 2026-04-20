@@ -339,14 +339,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { arch: x64,   runner: windows-2022,   rust-target: x86_64-pc-windows-msvc  }
-          - { arch: arm64, runner: windows-11-arm,  rust-target: aarch64-pc-windows-msvc }
+          # java_version: Temurin JDK 17 is available on x64 Windows runners.
+          # windows-11-arm only ships JDK 21+, so arm64 uses '21'.
+          - { arch: x64,   runner: windows-2022,   rust-target: x86_64-pc-windows-msvc,  java_version: '17' }
+          - { arch: arm64, runner: windows-11-arm,  rust-target: aarch64-pc-windows-msvc, java_version: '21' }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
+        with: { distribution: temurin, java-version: '${{ matrix.java_version }}' }
 
       - name: Download Windows Rust lib (${{ matrix.arch }})
         uses: actions/download-artifact@v4
