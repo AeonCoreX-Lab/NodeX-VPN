@@ -10,6 +10,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE:   1
+  # Opt into Node.js 24 for all GitHub Actions now.
+  # Node.js 20 is deprecated and will be FORCED to Node.js 24 on June 2, 2026.
+  # Without this, the runner prints deprecation warnings on every job.
+  # Remove this line once actions/checkout, actions/cache, actions/upload-artifact
+  # release new major versions with Node.js 24 as the default runtime.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Job 1: Build Rust core for ALL targets
@@ -94,6 +100,21 @@ jobs:
         env:
           OPENSSL_STATIC: 1
         run:  cargo ndk -t ${{ matrix.target }} -o ../shared/src/androidMain/jniLibs build --release
+
+      # ── tvOS: patch pwd-grp for libc compatibility ───────────────────────
+      # pwd-grp v0.1.1 (pulled by arti-client) calls libc::getresuid /
+      # libc::getresgid in lmockable.rs. These POSIX calls exist on Linux,
+      # macOS and iOS but are ABSENT from tvOS's restricted libc, causing:
+      #   error[E0425]: cannot find value `getresuid` in crate `libc`
+      # Fix: pre-fetch pwd-grp into the cargo registry cache, add
+      #   #[cfg(not(target_os = "tvos"))] guards on the two offending fields,
+      # then regenerate .cargo-checksum.json so cargo accepts the patched source.
+      - name: Patch pwd-grp for tvOS libc compatibility
+        if:   contains(matrix.target, 'apple-tvos')
+        working-directory: rust-core
+        run: |
+          cargo fetch --target ${{ matrix.target }}
+          python3 ../ci/patch_pwd_grp_tvos.py
 
       - name: Build (non-Android, non-FreeBSD)
         if:   matrix.group != 'android' && matrix.group != 'freebsd'
