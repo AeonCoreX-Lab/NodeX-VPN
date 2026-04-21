@@ -1,0 +1,229 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* ── File References ─────────────────────────────────────────────────── */
+		AA000001 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = tvOSApp.swift;      path = tvosApp/tvOSApp.swift;      sourceTree = "<group>"; };
+		AA000002 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift;  path = tvosApp/AppDelegate.swift;  sourceTree = "<group>"; };
+		AA000003 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContentView.swift;  path = tvosApp/ContentView.swift;  sourceTree = "<group>"; };
+		AA000004 = { isa = PBXFileReference; lastKnownFileType = text.plist.xml;   name = Info.plist;         path = tvosApp/Info.plist;         sourceTree = "<group>"; };
+		AA000005 = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = tvosApp/Assets.xcassets;    sourceTree = "<group>"; };
+
+		AA000020 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppProxyProvider.swift; path = NodeXTvTunnel/AppProxyProvider.swift; sourceTree = "<group>"; };
+		AA000021 = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = NodeXTvTunnel/Info.plist; sourceTree = "<group>"; };
+		AA000022 = { isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = NodeXTvTunnel.entitlements; path = NodeXTvTunnel/NodeXTvTunnel.entitlements; sourceTree = "<group>"; };
+		AA000023 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProxyDiscovery.swift; path = tvosApp/ProxyDiscovery.swift; sourceTree = "<group>"; };
+		AA000030 = { isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; name = NodeXTvTunnel.appex; path = NodeXTvTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+
+		AA000010 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = NodeXTvVPN.app; path = NodeXTvVPN.app; sourceTree = BUILT_PRODUCTS_DIR; };
+
+/* ── Build Files ─────────────────────────────────────────────────────── */
+		BB000001 = { isa = PBXBuildFile; fileRef = AA000001; };
+		BB000002 = { isa = PBXBuildFile; fileRef = AA000002; };
+		BB000003 = { isa = PBXBuildFile; fileRef = AA000003; };
+		BB000005 = { isa = PBXBuildFile; fileRef = AA000005; };
+
+		BB000020 = { isa = PBXBuildFile; fileRef = AA000020; };
+		BB000023 = { isa = PBXBuildFile; fileRef = AA000023; };
+		BB000030 = { isa = PBXBuildFile; fileRef = AA000030; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+
+/* ── Groups ──────────────────────────────────────────────────────────── */
+		CC000001 = {
+			isa = PBXGroup;
+			children = (AA000001, AA000002, AA000003, AA000004, AA000005, AA000023, AA000020, AA000021, AA000022);
+			name = NodeXTvVPN;
+			sourceTree = "<group>";
+		};
+		CC000000 = {
+			isa = PBXGroup;
+			children = (CC000001, AA000010);
+			sourceTree = "<group>";
+		};
+
+/* ── Source Build Phase ──────────────────────────────────────────────── */
+		DD000001 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (BB000001, BB000002, BB000003, BB000023);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD000002 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (BB000005);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		DD000010 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (BB000020);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD000011 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD000012 = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (BB000030);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+/* ── Native Target ───────────────────────────────────────────────────── */
+		EE000001 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF000001;
+			buildPhases = (DD000001, DD000002, DD000012);
+			buildRules = ();
+			dependencies = ();
+			name = NodeXTvVPN;
+			productName = NodeXTvVPN;
+			productReference = AA000010;
+			productType = "com.apple.product-type.application";
+		};
+
+		EE000002 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF000002;
+			buildPhases = (DD000010, DD000011);
+			buildRules = ();
+			dependencies = ();
+			name = NodeXTvTunnel;
+			productName = NodeXTvTunnel;
+			productReference = AA000030;
+			productType = "com.apple.product-type.app-extension";
+		};
+
+/* ── Project ─────────────────────────────────────────────────────────── */
+		EE000000 = {
+			isa = PBXProject;
+			attributes = { LastSwiftUpdateCheck = 1540; TargetAttributes = { EE000001 = { CreatedOnToolsVersion = 15.4; }; }; };
+			buildConfigurationList = FF000000;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = CC000000;
+			productRefGroup = CC000000;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (EE000001, EE000002);
+		};
+
+/* ── Build Configurations ────────────────────────────────────────────── */
+		GG000001 = {
+			isa = XCBuildConfiguration;
+			name = Debug;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+		};
+		GG000002 = {
+			isa = XCBuildConfiguration;
+			name = Release;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+		};
+		GG000003 = {
+			isa = XCBuildConfiguration;
+			name = Debug;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				CODE_SIGN_ENTITLEMENTS = tvosApp/NodeXTvVPN.entitlements;
+				INFOPLIST_FILE = tvosApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				PRODUCT_BUNDLE_IDENTIFIER = com.nodex.vpn.tvos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+			};
+		};
+		GG000004 = {
+			isa = XCBuildConfiguration;
+			name = Release;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = tvosApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				PRODUCT_BUNDLE_IDENTIFIER = com.nodex.vpn.tvos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+			};
+		};
+		FF000000 = { isa = XCConfigurationList; buildConfigurations = (GG000001, GG000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		FF000001 = { isa = XCConfigurationList; buildConfigurations = (GG000003, GG000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+	};
+		GG000005 = {
+			isa = XCBuildConfiguration;
+			name = Debug;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NodeXTvTunnel/NodeXTvTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = NodeXTvTunnel/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../../Frameworks", "@executable_path/../Frameworks");
+				PRODUCT_BUNDLE_IDENTIFIER = com.nodex.vpn.tvos.proxy;
+				PRODUCT_NAME = NodeXTvTunnel;
+				SDKROOT = appletvos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+			};
+		};
+		GG000006 = {
+			isa = XCBuildConfiguration;
+			name = Release;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NodeXTvTunnel/NodeXTvTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = NodeXTvTunnel/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../../Frameworks", "@executable_path/../Frameworks");
+				PRODUCT_BUNDLE_IDENTIFIER = com.nodex.vpn.tvos.proxy;
+				PRODUCT_NAME = NodeXTvTunnel;
+				SDKROOT = appletvos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+			};
+		};
+		FF000002 = { isa = XCConfigurationList; buildConfigurations = (GG000005, GG000006); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+
+	rootObject = EE000000;
+}

@@ -315,3 +315,9 @@ private fun SidebarNavItem(screen: Screen, selected: Boolean, onClick: () -> Uni
 }
 
 private val CircleShape = RoundedCornerShape(50)
+
+// ── TV Sidebar delegator (routes to TvApp's own nav) ─────────────────────────
+// When NavType.TvSidebar is active the TvNodeXApp composable takes full control;
+// AdaptiveScaffold is not used for TV. This branch should never be reached in
+// normal navigation flow, but acts as a safety fallback.
+// The actual TV sidebar is rendered inside TvNodeXApp (ui/tv/TvApp.kt).

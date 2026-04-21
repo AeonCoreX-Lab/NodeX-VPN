@@ -15,6 +15,10 @@ kotlin {
                 implementation(project(":shared"))
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
+                // Koin DI — required by Main.kt (startKoin / get<VpnManager>).
+                // :shared exposes koin-core transitively only for its own sourcesets;
+                // desktopApp is a separate Gradle module and must declare it explicitly.
+                implementation(libs.koin.core)
                 // JNA for Rust native library loading
                 implementation("net.java.dev.jna:jna:5.14.0")
                 implementation("net.java.dev.jna:jna-platform:5.14.0")

@@ -97,6 +97,12 @@ rtnetlink = "0.15"
 nix  = { version = "0.30", features = ["net", "user"] }
 libc = "0.2"
 
+# FreeBSD: pfSense / OPNsense
+# nix provides kldload wrapper, ifconfig helpers, and sysctl bindings
+[target.'cfg(target_os = "freebsd")'.dependencies]
+nix  = { version = "0.30", features = ["net", "user", "process", "kmod"] }
+libc = "0.2"
+
 # Android: openssl MUST be vendored for NDK cross-compilation
 # Without this, openssl-sys (pulled by arti) fails to find headers
 [target.'cfg(target_os = "android")'.dependencies]

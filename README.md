@@ -7,16 +7,17 @@
 ### Serverless · Anonymous · Tor-Powered
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?style=flat-square&logo=kotlin)](https://kotlinlang.org)
-[![Rust](https://img.shields.io/badge/Rust-1.83-CE422B?style=flat-square&logo=rust)](https://rustlang.org)
+[![Rust](https://img.shields.io/badge/Rust-stable-CE422B?style=flat-square&logo=rust)](https://rustlang.org)
 [![Compose Multiplatform](https://img.shields.io/badge/Compose_MP-1.7.3-4285F4?style=flat-square&logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
 [![Tor](https://img.shields.io/badge/Powered_by-Tor_Network-7E4798?style=flat-square)](https://torproject.org)
 [![License](https://img.shields.io/badge/License-MIT-00F5FF?style=flat-square)](LICENSE)
-[![Platforms](https://img.shields.io/badge/Platforms-Android_·_iOS_·_macOS_·_Windows_·_Linux-green?style=flat-square)](#-platform-support)
+[![Platforms](https://img.shields.io/badge/Platforms-Android_·_iOS_·_TV_·_macOS_·_Windows_·_Linux_·_Router-green?style=flat-square)](#-platform-support)
 
-**A production-ready, serverless VPN application built on the Tor network.  
-Zero owned servers. Zero logs. 99% IP anonymity. Rust-powered speed.**
+**A production-ready, serverless VPN built on the Tor network.**  
+**Zero owned servers · Zero logs · 99% IP anonymity · Rust-powered speed**  
+**9 platforms — Android, iOS, tvOS (Apple TV), Android TV, macOS, Windows, Linux, and Router**
 
-[Features](#-features) · [Architecture](#️-architecture) · [Getting Started](#-getting-started) · [Build](#️-build) · [CI/CD](#-cicd) · [FAQ](#-faq)
+[Features](#-features) · [Platforms](#-platform-support) · [Architecture](#️-architecture) · [Getting Started](#-getting-started) · [Build](#️-build) · [CI/CD](#-cicd) · [FAQ](#-faq)
 
 ---
 
@@ -24,7 +25,7 @@ Zero owned servers. Zero logs. 99% IP anonymity. Rust-powered speed.**
 
 ## 🌟 What Makes NodeX VPN Different
 
-Most VPNs route your traffic through **servers they own** — meaning they *could* log you. NodeX VPN has **no servers**. Your traffic is routed through the **Tor network** — thousands of volunteer-operated relays worldwide — making surveillance structurally impossible.
+Most VPNs route your traffic through **servers they own** — meaning they *could* log you. NodeX VPN has **no servers**. Your traffic routes through the **Tor network** — thousands of volunteer-operated relays worldwide — making surveillance structurally impossible.
 
 ```
 Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
@@ -54,7 +55,6 @@ Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
 | **18 Exit Countries** | US, DE, NL, JP, GB, SG, CA, FR, CH, AU, SE, NO, IS, RO, UA, ZA, BR, IN |
 | **Live Country Switching** | Change exit country without reconnecting |
 | **Real-time Latency** | Live latency measurement per server node |
-| **Load Balancing Info** | Server load percentage shown per node |
 | **Bridge Management** | Add/remove obfs4 bridges at runtime |
 
 ### ⚡ Performance
@@ -64,87 +64,172 @@ Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
 | **Async I/O** | Tokio-powered async runtime — handles 1M+ concurrent users |
 | **Live Traffic Graph** | Real-time bandwidth visualization |
 | **Circuit Management** | Multi-circuit Tor connection pooling |
-| **EMA Rate Smoothing** | Exponential moving average for stable speed readings |
 
-### 📱 Cross-Platform UI
+### 📺 TV & Router (New)
 | Feature | Details |
 |---------|---------|
-| **Unified Codebase** | Single Compose Multiplatform UI for all 5 platforms |
-| **Adaptive Layout** | Phone / Tablet / Desktop responsive breakpoints |
-| **Cyberpunk Dark Theme** | Material 3 with neon cyan/purple palette |
-| **Animated Splash Screen** | Tor orbit ring animations on launch |
-| **3-Page Onboarding** | Interactive Canvas illustrations |
-| **Firebase Auth** | Email/Password + Google Sign-In |
+| **Android TV** | D-pad / remote optimized Leanback UI, TV launcher integration |
+| **Apple TV (tvOS)** | Full KMP shared UI, `NEAppProxyProvider` VPN tunnel, wide-format icons |
+| **Router Mode — OpenWrt** | `procd` service + `iptables` transparent proxy via TUN |
+| **Router Mode — GL.iNet** | Plug-and-play, runs on existing OpenWrt base |
+| **Router Mode — Asus Merlin** | JFFS2 persistent scripts, auto-start on boot |
+| **Whole-Home Protection** | Smart TV, PS5, Xbox, IoT devices protected — no app needed |
+
+---
+
+## 📱 Platform Support
+
+### ✅ Supported Now (9 Platforms)
+
+| Platform | Min Version | Tunnel Method | App Module |
+|----------|------------|---------------|------------|
+| **Android Phone / Tablet** | API 26 (Android 8.0+) | `VpnService` + JNI tun2socks | `androidApp/` |
+| **Android TV** | API 26 + Leanback | `VpnService` + JNI tun2socks | `androidTvApp/` |
+| **iOS (iPhone / iPad)** | iOS 16+ | `NetworkExtension` PacketTunnelProvider | `iosApp/` |
+| **Apple TV (tvOS)** | tvOS 16+ | `NetworkExtension` AppProxyProvider | `tvosApp/` |
+| **macOS** | macOS 13+ | `utun` + pfctl routing | `desktopApp/` |
+| **Linux Desktop** | Ubuntu 20.04+ / Fedora 36+ | `/dev/net/tun` + iptables | `desktopApp/` |
+| **Windows** | Windows 10 x64+ | Wintun driver | `desktopApp/` |
+| **Router — OpenWrt / GL.iNet** | Linux 4.9+, 64-bit | TUN + iptables transparent proxy | `router/` |
+| **Router — Asus Merlin** | aarch64 / x86_64 | TUN + iptables (JFFS2 persistent) | `router/` |
+
+### 🔜 Planned Support
+
+| Platform | What's Needed | Priority |
+|----------|--------------|----------|
+| **pfSense / OPNsense** | `x86_64-unknown-freebsd` Rust build target + BSD pf rules | High |
+| **Synology NAS** | SPK package format, DSM service wrapper | Medium |
+| **DD-WRT / Tomato** | Same Linux binary, manual init.d (basic support already in `install.sh`) | Low |
+| **Amazon Fire TV** | Android TV APK works via sideload; Play Store listing needed | Medium |
+| **watchOS** | Limited NE API on watchOS; depends on Apple expanding VPN access | Low |
+| **Windows ARM64 Desktop** | Compose Multiplatform desktop doesn't yet publish `windows-arm64`; Rust binary already built | Waiting on JB |
+
+---
+
+## 📺 Android TV — Details
+
+The `androidTvApp/` module is a purpose-built Android TV app:
+
+- **Leanback launcher** — appears on the TV home row, not just in all-apps
+- **D-pad navigation** — every button, server row, and settings option navigable via remote
+- **TV banner** — `320×180dp` vector banner (`tv_banner.xml`) for launcher display
+- **Shared JNI** — same `libnodex_vpn_core.so` from the phone app; no separate Rust build
+- **Separate AAB** — distinct Google Play track (Android TV / Google TV)
+
+```bash
+./gradlew :androidTvApp:assembleDebug    # TV APK
+./gradlew :androidTvApp:bundleRelease    # TV AAB for Play Store
+```
+
+---
+
+## 📺 Apple TV (tvOS) — Details
+
+The `tvosApp/` is a full Xcode project parallel to `iosApp/`:
+
+- **`AppProxyProvider`** — tvOS 16+ supports `NEAppProxyProvider`; used instead of `PacketTunnelProvider` (which is iOS/macOS only)
+- **Wide-format icons** — tvOS requires banner icons, not square ones:
+  - `AppIcon-400x240.png` (1x)
+  - `AppIcon-800x480.png` (2x)
+  - `AppIcon-1280x768.png` (TV marketing)
+- **KMP shared UI** — `TvMainViewController.kt` wires the shared `TvApp` composable into SwiftUI via `UIViewControllerRepresentable`
+- **Firebase Auth** — Google Sign-In on tvOS uses device-flow OAuth (QR code / code-on-phone)
+- **Separate CI job** — `tvos` job builds `NodeXTvVPN.xcworkspace`, exports `.ipa`
+
+```bash
+# Open in Xcode
+open tvosApp/NodeXTvVPN.xcworkspace
+# Or via CI
+xcodebuild archive -workspace tvosApp/NodeXTvVPN.xcworkspace -scheme NodeXTvVPN -sdk appletvos
+```
+
+---
+
+## 🏠 Router Mode — Details
+
+The `router/` directory contains a complete router deployment system:
+
+```
+router/
+├── install.sh              # Universal: auto-detects OpenWrt / Merlin / DD-WRT / generic Linux
+├── setup_openwrt.sh        # OpenWrt-specific: kmod-tun, iptables, UCI zone, hotplug hook
+├── setup_glinet_merlin.sh  # GL.iNet / Asus Merlin specific paths and JFFS2
+├── package.sh              # CI: wraps binary + scripts into nodex-vpn-router-<arch>.tar.gz
+└── README.md               # Full router documentation
+```
+
+**How it works:**
+```
+LAN Device → iptables PREROUTING (br-lan)
+              ├── TCP  → NodeX TransPort :9040 → Tor circuit → Internet
+              └── DNS  → NodeX DNSPort   :5353 → DNS-over-Tor → resolved
+```
+
+**Quick install on OpenWrt:**
+```sh
+ssh root@192.168.1.1
+opkg install kmod-tun
+wget -O- https://github.com/your-org/NodeX-VPN/releases/latest/download/install.sh | sh
+sh /tmp/setup_openwrt.sh
+/etc/init.d/nodex start
+```
+
+**Supported router hardware (64-bit only):**
+- GL.iNet GL-MT6000, GL-AXT1800, GL-MT3000
+- Asus RT-AX88U, RT-AX86U (Merlin firmware)
+- Linksys WRT3200ACM, WRT1900ACS (OpenWrt)
+- Any x86_64 mini-PC running OpenWrt (e.g. Topton, Beelink)
+
+> ⚠️ **UDP (except DNS) is not anonymized** — fundamental Tor limitation. PS5/Xbox game traffic over UDP uses real IP. TCP connections are fully protected.
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    PRESENTATION LAYER                               │
-│         Compose Multiplatform (Kotlin) — shared UI                  │
-│  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌─────────┐ ┌─────────┐  │
-│  │ Splash   │ │Onboarding │ │   Auth   │ │Dashboard│ │Settings │  │
-│  │ Screen   │ │ 3 pages   │ │ Firebase │ │ +Graph  │ │  Logs   │  │
-│  └──────────┘ └───────────┘ └──────────┘ └─────────┘ └─────────┘  │
-├─────────────────────────────────────────────────────────────────────┤
-│                     SHARED LOGIC LAYER (KMP)                        │
-│  VpnManager · AuthViewModel · AuthRepository · Koin DI             │
-│  expect/actual: PlatformVpnBridge · AuthRepository · WindowSize    │
-├────────────┬────────────┬────────────┬────────────┬────────────────┤
-│  Android   │    iOS     │   Linux    │   macOS    │    Windows     │
-│ VpnService │NetworkExt  │ /dev/tun   │   utun     │   Wintun.dll   │
-│  JNI/NDK   │XCFramework │ iptables   │ route add  │   WinAPI       │
-├────────────┴────────────┴────────────┴────────────┴────────────────┤
-│                      RUST CORE ENGINE                               │
-│  arti-client (Tor) · SOCKS5 Proxy · tun2socks · Stats Tracker     │
-│  UniFFI → auto-generates Kotlin + Swift + C bindings               │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                    Tor Network (Distributed)
-                  Guard → Middle → Exit → Internet
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         PRESENTATION LAYER                               │
+│            Compose Multiplatform (Kotlin) — shared UI                    │
+│  ┌──────┐ ┌──────────┐ ┌──────┐ ┌─────────┐ ┌────────┐ ┌────────────┐  │
+│  │Splash│ │Onboarding│ │ Auth │ │Dashboard│ │Settings│ │  TV Suite  │  │
+│  └──────┘ └──────────┘ └──────┘ └─────────┘ └────────┘ └────────────┘  │
+├──────────────────────────────────────────────────────────────────────────┤
+│                      SHARED LOGIC LAYER (KMP)                            │
+│   VpnManager · AuthViewModel · AuthRepository · Koin DI                 │
+│   expect/actual: PlatformVpnBridge · AuthRepository · WindowSize        │
+├────────┬────────┬──────────┬──────────┬──────────┬──────────┬───────────┤
+│Android │Android │   iOS    │  tvOS    │  Linux/  │  macOS   │  Windows  │
+│ Phone  │   TV   │  Phone   │Apple TV  │  Router  │  Desktop │  Desktop  │
+│VpnSvc  │VpnSvc  │ NetExt   │AppProxy  │ /dev/tun │   utun   │  Wintun   │
+│JNI/NDK │JNI/NDK │XCFrmwk   │XCFrmwk   │ iptables │  pfctl   │  WinAPI   │
+├────────┴────────┴──────────┴──────────┴──────────┴──────────┴───────────┤
+│                         RUST CORE ENGINE                                 │
+│   arti-client (Tor) · SOCKS5 Proxy · tun2socks · DNS · Stats           │
+│   UniFFI → auto-generates Kotlin + Swift + C bindings                   │
+└──────────────────────────────────────────────────────────────────────────┘
+                                │
+                      Tor Network (Distributed)
+                    Guard → Middle → Exit → Internet
 ```
 
 ### Technology Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **UI** | Compose Multiplatform 1.7.3 | Unified UI — all 5 platforms |
+| **UI** | Compose Multiplatform 1.7.3 | Unified UI — all 9 platforms |
 | **Shared Logic** | Kotlin Multiplatform 2.1.0 | Business logic, state management |
-| **Dependency Injection** | Koin 4.0 | Multi-platform DI |
-| **HTTP Client** | Ktor 3.0 | Network requests (desktop REST auth) |
-| **Serialization** | kotlinx.serialization 1.7 | JSON, config persistence |
-| **VPN Engine** | Rust + arti-client 0.22 | Tor bootstrapping, SOCKS5 proxy |
-| **FFI Bindings** | UniFFI 0.28 | Auto-generates Kotlin/Swift/C |
-| **Async Runtime** | Tokio 1.x | Async I/O in Rust |
-| **Android Tunnel** | VpnService + NDK JNI | TUN fd management |
+| **DI** | Koin 4.0 | Multi-platform dependency injection |
+| **VPN Engine** | Rust + arti-client | Tor bootstrapping, SOCKS5 proxy |
+| **FFI** | UniFFI 0.28 | Auto-generates Kotlin/Swift/C bindings |
+| **Async** | Tokio 1.x | Async I/O in Rust core |
+| **Android Tunnel** | VpnService + NDK JNI | Phone + TV TUN fd management |
 | **iOS Tunnel** | NetworkExtension (PacketTunnelProvider) | Packet interception |
+| **tvOS Tunnel** | NetworkExtension (AppProxyProvider) | App-level proxy on Apple TV |
 | **macOS Tunnel** | utun + pfctl | System route override |
-| **Linux Tunnel** | /dev/net/tun + iptables | Full traffic redirect |
+| **Linux Tunnel** | /dev/net/tun + iptables | Full traffic redirect (desktop + router) |
 | **Windows Tunnel** | Wintun driver | High-speed TUN interface |
-| **Authentication** | Firebase Auth | Email/Password + Google Sign-In |
-| **CI/CD** | GitHub Actions | Multi-arch builds, all 5 platforms |
-
----
-
-## 📱 Platform Support
-
-| Platform | Min Version | Tunnel Method | Status |
-|----------|------------|---------------|--------|
-| **Android** | API 26 (8.0+) | `VpnService` + JNI tun2socks | ✅ Production |
-| **iOS** | iOS 16+ | `NetworkExtension` PacketTunnelProvider | ✅ Production |
-| **macOS** | macOS 13+ | `utun` + pfctl routing | ✅ Production |
-| **Linux** | Ubuntu 20.04+ / Fedora 36+ | `/dev/net/tun` + iptables | ✅ Production |
-| **Windows** | Windows 10+ | Wintun driver | ✅ Production |
-
-### Adaptive Responsive Layout
-
-| Screen Width | Device | Navigation | Layout |
-|-------------|--------|-----------|--------|
-| `< 600dp` | Phone | Bottom Bar | Single column |
-| `600–1200dp` | Tablet / Landscape | Navigation Rail | Two-pane split |
-| `> 1200dp` | Desktop | Permanent Sidebar | Three-pane with sidebar |
+| **Auth** | Firebase Auth | Email/Password + Google Sign-In |
+| **CI/CD** | GitHub Actions | 9-platform parallel builds |
 
 ---
 
@@ -152,69 +237,66 @@ Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
 
 ```
 NodeX-VPN/
-├── 📦 rust-core/                    # Rust VPN engine
+├── 📦 rust-core/                    # Rust VPN engine (shared by all 9 platforms)
 │   ├── src/
 │   │   ├── lib.rs                   # UniFFI exported API
 │   │   ├── tor_manager.rs           # arti-client lifecycle
 │   │   ├── tun2socks.rs             # IP packet → SOCKS5 relay
 │   │   ├── stats.rs                 # Bandwidth + circuit stats
-│   │   ├── dns.rs                   # DNS-over-Tor listener
-│   │   ├── node_registry.rs         # Exit node catalogue
+│   │   ├── dns.rs                   # DNS-over-Tor
+│   │   ├── node_registry.rs         # Exit node catalogue (18 countries)
 │   │   ├── logging.rs               # Ring-buffer log system
 │   │   └── tunnel/
-│   │       ├── linux.rs             # TUN + iptables (Linux)
-│   │       ├── macos.rs             # utun + pfctl (macOS)
-│   │       └── windows.rs           # Wintun driver (Windows)
-│   ├── nodex_vpn.udl                # UniFFI interface definition
+│   │       ├── linux.rs             # TUN + iptables (Linux desktop + router)
+│   │       ├── macos.rs             # utun + pfctl
+│   │       └── windows.rs           # Wintun driver
 │   └── Cargo.toml
 │
 ├── 📱 shared/                       # Kotlin Multiplatform
 │   └── src/
 │       ├── commonMain/kotlin/
-│       │   ├── auth/                # AuthViewModel, AuthRepository (expect)
-│       │   ├── di/                  # Koin AppModule
-│       │   ├── domain/              # VpnState, VpnStats, ServerNode models
-│       │   ├── manager/             # VpnManager (core orchestrator)
-│       │   ├── platform/            # PlatformVpnBridge (expect)
-│       │   └── ui/
-│       │       ├── screens/         # Splash, Onboarding, Auth, Dashboard...
-│       │       ├── responsive/      # WindowSizeClass, AdaptiveNav, AdaptiveLayout
-│       │       └── theme/           # Cyberpunk Material3 theme
-│       ├── androidMain/             # Android actuals (Firebase, JNI)
-│       ├── iosMain/                 # iOS actuals (NetworkExtension, Firebase)
-│       └── desktopMain/             # Desktop actuals (JNA, REST auth)
+│       │   ├── ui/screens/          # Splash, Onboarding, Auth, Dashboard, Settings, Logs
+│       │   ├── ui/tv/               # TvApp, TvDashboard, TvServerList, TvSettings
+│       │   ├── ui/responsive/       # AdaptiveNav, AdaptiveLayout, WindowSizeClass
+│       │   └── ui/theme/            # Cyberpunk Material3 dark theme
+│       ├── androidMain/             # Android platform actuals
+│       ├── iosMain/                 # iOS platform actuals
+│       ├── tvosMain/                # tvOS platform actuals (NEW)
+│       └── desktopMain/             # Desktop platform actuals
 │
-├── 🤖 androidApp/                   # Android entry point
-│   └── src/main/
-│       ├── kotlin/
-│       │   ├── MainActivity.kt      # Firebase init, Google Sign-In launcher
-│       │   ├── NodeXVpnService.kt   # Foreground VPN service
-│       │   └── BootReceiver.kt      # Auto-connect on boot
-│       ├── res/mipmap-*/            # App icons (all densities)
-│       └── AndroidManifest.xml
+├── 🤖 androidApp/                   # Android phone/tablet
+├── 📺 androidTvApp/                 # Android TV (NEW)
+│   ├── src/main/kotlin/
+│   │   ├── TvMainActivity.kt        # Leanback entry point
+│   │   └── TvApplication.kt
+│   └── src/main/res/drawable/
+│       └── tv_banner.xml            # 320×180dp TV launcher banner
 │
-├── 🍎 iosApp/                       # iOS / macOS Xcode project
-│   ├── iosApp/
-│   │   ├── iOSApp.swift             # SwiftUI @main entry
-│   │   ├── AppDelegate.swift        # Firebase.configure(), Google URL handler
+├── 🍎 iosApp/                       # iOS Xcode project
+│   ├── iosApp/                      # SwiftUI app + Firebase
+│   └── NodeXTunnel/                 # PacketTunnelProvider
+│
+├── 📺 tvosApp/                      # Apple TV Xcode project (NEW)
+│   ├── tvosApp/
+│   │   ├── tvOSApp.swift            # @main SwiftUI entry
+│   │   ├── AppDelegate.swift        # Firebase init + VPN status
 │   │   ├── ContentView.swift        # Compose ↔ SwiftUI bridge
-│   │   └── Assets.xcassets/         # App icons (all sizes + App Store 1024px)
-│   ├── NodeXTunnel/
-│   │   └── PacketTunnelProvider.swift # NetworkExtension VPN tunnel
-│   └── Podfile                      # Firebase + GoogleSignIn pods
+│   │   └── Assets.xcassets/
+│   │       └── AppIcon~tv.appiconset/   # 400×240, 800×480, 1280×768 PNG icons
+│   ├── NodeXTvTunnel/
+│   │   └── AppProxyProvider.swift   # NEAppProxyProvider VPN tunnel
+│   └── NodeXTvVPN.xcworkspace
 │
 ├── 🖥️ desktopApp/                   # JVM desktop (Win/macOS/Linux)
-│   ├── src/desktopMain/kotlin/
-│   │   ├── Main.kt                  # Window setup, Koin init
-│   │   ├── PrivilegeChecker.kt      # CAP_NET_ADMIN / UAC elevation
-│   │   └── DesktopFirstLaunchPrefs.kt
-│   ├── resources/
-│   │   ├── macos/AppIcon.iconset/   # 10 PNG sizes → ICNS at build time
-│   │   ├── windows/nodex.ico        # Multi-size Windows icon
-│   │   └── linux/nodex.png          # 512px Linux icon
-│   └── build.gradle.kts             # Compose Desktop packaging config
 │
-└── ⚙️ .github/workflows/ci.yml      # Multi-platform CI/CD pipeline
+├── 🏠 router/                       # Router support (NEW)
+│   ├── install.sh                   # Universal auto-detect installer
+│   ├── setup_openwrt.sh             # OpenWrt: kmod-tun, iptables, UCI, hotplug
+│   ├── setup_glinet_merlin.sh       # GL.iNet + Asus Merlin
+│   ├── package.sh                   # CI: wraps binary+scripts → .tar.gz
+│   └── README.md
+│
+└── ⚙️ .github/workflows/ci.yml      # 9-platform parallel CI/CD
 ```
 
 ---
@@ -227,9 +309,9 @@ NodeX-VPN/
 |------|---------|----------|
 | JDK | 17+ | [adoptium.net](https://adoptium.net) |
 | Android Studio | Hedgehog+ | [developer.android.com](https://developer.android.com/studio) |
-| Rust | 1.83+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| Xcode | 15+ (iOS/macOS) | Mac App Store |
-| CocoaPods | Latest (iOS) | `sudo gem install cocoapods` |
+| Rust | stable | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| Xcode | 15+ | Mac App Store |
+| CocoaPods | Latest | `sudo gem install cocoapods` |
 
 ### 1. Clone
 
@@ -238,240 +320,159 @@ git clone https://github.com/your-username/NodeX-VPN.git
 cd NodeX-VPN
 ```
 
-### 2. Firebase Setup (Required for Auth)
+### 2. Firebase Setup
 
-> ⚠️ **Never commit `google-services.json` or `GoogleService-Info.plist` to the repo.**
+> ⚠️ **Never commit Firebase config files to the repo.**
 
-**Android:**
-1. Go to [Firebase Console](https://console.firebase.google.com) → Create project
-2. Add Android app → package `com.nodex.vpn.android`
-3. Download `google-services.json` → place in `androidApp/`
-4. Enable **Email/Password** and **Google** sign-in providers
+| App | Bundle ID | File | Destination |
+|-----|-----------|------|-------------|
+| Android (phone + TV) | `com.nodex.vpn.android` | `google-services.json` | `androidApp/` |
+| iOS | `com.nodex.vpn` | `GoogleService-Info.plist` | `iosApp/iosApp/` |
+| tvOS | `com.nodex.vpn.tv` | `GoogleService-Info.plist` | `tvosApp/tvosApp/` |
 
-**iOS:**
-1. Add iOS app → bundle ID `com.nodex.vpn`
-2. Download `GoogleService-Info.plist` → place in `iosApp/iosApp/`
-
-**GitHub Actions (CI):**
-```
-Settings → Secrets → Actions → New repository secret
-GOOGLE_SERVICES_JSON       = (paste contents of google-services.json)
-GOOGLE_SERVICE_INFO_PLIST  = (paste contents of GoogleService-Info.plist)
-```
+GitHub Actions secrets: `GOOGLE_SERVICES_JSON`, `GOOGLE_SERVICE_INFO_PLIST`, `GOOGLE_SERVICE_INFO_PLIST_TVOS`
 
 ### 3. Build Rust Core
 
 ```bash
 cd rust-core
 
-# Install Android targets
-rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+# Android
+rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
 cargo install cargo-ndk
-
-# Install iOS targets
-rustup target add aarch64-apple-ios x86_64-apple-ios
-
-# Build for development (current platform)
-cargo build --release
-
-# Build for Android (NDK required)
 cargo ndk -t arm64-v8a -o ../shared/src/androidMain/jniLibs build --release
 
-# Generate UniFFI bindings
-cargo run --bin uniffi-bindgen generate src/nodex_vpn.udl --language kotlin \
-  --out-dir ../shared/src/commonMain/kotlin/com/nodex/vpn/generated/
+# iOS
+rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+cargo build --release --target aarch64-apple-ios
+
+# tvOS
+rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim
+cargo build --release --target aarch64-apple-tvos
+
+# Router / Linux ARM
+rustup target add aarch64-unknown-linux-gnu
+cargo build --release --target aarch64-unknown-linux-gnu
 ```
 
 ### 4. Run
 
 ```bash
-# Android
-./gradlew :androidApp:installDebug
+./gradlew :androidApp:installDebug       # Phone
+./gradlew :androidTvApp:installDebug     # TV
+./gradlew :desktopApp:run                # Desktop
 
-# Desktop (current OS)
-./gradlew :desktopApp:run
+# iOS — open iosApp/iosApp.xcworkspace in Xcode
+# tvOS — open tvosApp/NodeXTvVPN.xcworkspace in Xcode
 
-# iOS — open in Xcode
-cd iosApp && pod install
-open iosApp.xcworkspace
+# Router
+ssh root@192.168.1.1
+wget -O- https://github.com/your-org/NodeX-VPN/releases/latest/download/install.sh | sh
 ```
 
 ---
 
 ## 🛠️ Build
 
-### Android APK / AAB
+### Android
 
 ```bash
-# Debug APK
-./gradlew :androidApp:assembleDebug
-
-# Release AAB (requires signing config)
-./gradlew :androidApp:bundleRelease
+./gradlew :androidApp:assembleDebug          # Phone debug APK
+./gradlew :androidApp:bundleRelease          # Phone release AAB
+./gradlew :androidTvApp:assembleDebug        # TV debug APK
+./gradlew :androidTvApp:bundleRelease        # TV release AAB
 ```
 
-### Desktop Installers
+### iOS / tvOS
 
 ```bash
-# macOS DMG
-./gradlew :desktopApp:packageDmg
-
-# Windows MSI
-./gradlew :desktopApp:packageMsi
-
-# Linux DEB
-./gradlew :desktopApp:packageDeb
-
-# Linux RPM
-./gradlew :desktopApp:packageRpm
-```
-
-> **macOS:** Requires `CAP_NET_ADMIN` or root for TUN device creation. The app auto-elevates via `pkexec` on Linux and UAC on Windows.
-
-### iOS IPA
-
-```bash
+# iOS IPA
 xcodebuild archive \
-  -workspace iosApp/NodeXVPN.xcworkspace \
-  -scheme NodeXVPN \
-  -archivePath build/NodeXVPN.xcarchive
+  -workspace iosApp/NodeXVPN.xcworkspace -scheme NodeXVPN \
+  -sdk iphoneos -archivePath build/NodeXVPN.xcarchive
 
-xcodebuild -exportArchive \
-  -archivePath build/NodeXVPN.xcarchive \
-  -exportOptionsPlist iosApp/ExportOptions.plist \
-  -exportPath build/ipa/
+# tvOS IPA
+xcodebuild archive \
+  -workspace tvosApp/NodeXTvVPN.xcworkspace -scheme NodeXTvVPN \
+  -sdk appletvos -archivePath build/NodeXTvVPN.xcarchive
+```
+
+### Desktop
+
+```bash
+./gradlew :desktopApp:packageDmg    # macOS
+./gradlew :desktopApp:packageMsi    # Windows
+./gradlew :desktopApp:packageDeb    # Linux DEB
+./gradlew :desktopApp:packageRpm    # Linux RPM
+```
+
+### Router Packages
+
+```bash
+bash router/package.sh x86_64-unknown-linux-gnu    # x86_64 router tarball
+bash router/package.sh aarch64-unknown-linux-gnu   # ARM64 router tarball
+# Output: dist/router/nodex-vpn-router-*-linux-gnu.tar.gz
 ```
 
 ---
 
 ## ⚙️ CI/CD
 
-The GitHub Actions pipeline (`.github/workflows/ci.yml`) automatically builds all platforms on every push.
-
-### Pipeline Overview
+### Pipeline — 9 Jobs
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Push / PR to main                                      │
-└──────────┬──────────────────────────────────────────────┘
-           │
-    ┌──────▼──────────────────────────────────────────┐
-    │  Job 1: rust-core (matrix — 10 targets)         │
-    │  android×4  ios×3  macos×2  linux×1  windows×1  │
-    └──────┬──────────────────────────────────────────┘
-           │ artifacts: .so / .a / .dylib / .dll
-    ┌──────▼────────────────────────────────┐
-    │  Jobs 2-5 (parallel, needs rust-core) │
-    │  ┌────────┐ ┌────────┐ ┌──────────┐  │
-    │  │Android │ │  iOS   │ │ Desktop  │  │
-    │  │APK+AAB │ │  IPA   │ │DMG/MSI/  │  │
-    │  │        │ │        │ │ DEB/RPM  │  │
-    │  └────────┘ └────────┘ └──────────┘  │
-    └──────┬────────────────────────────────┘
-           │ (on git tag v*)
-    ┌──────▼──────────────────┐
-    │  Job 5: GitHub Release  │
-    │  Upload all artifacts   │
-    └─────────────────────────┘
+Push / PR to main
+       │
+┌──────▼─────────────────────────────────────────────────────────────────┐
+│  Job 1: rust-core  (matrix — 15 targets)                               │
+│  android×4  ios×3  tvos×2  macos×2  linux×2  windows×2                │
+└──────┬─────────────────────────────────────────────────────────────────┘
+       │ artifacts: .so / .a / .dylib / .dll
+┌──────▼─────────────────────────────────────────────────────────────────┐
+│  Jobs 2–8 (parallel)                                                   │
+│  ┌──────────┐ ┌──────────┐ ┌──────┐ ┌──────┐ ┌────────┐ ┌─────────┐  │
+│  │ Android  │ │Android TV│ │ iOS  │ │tvOS  │ │Desktop │ │ Router  │  │
+│  │ APK+AAB  │ │ APK+AAB  │ │ IPA  │ │ IPA  │ │DMG/MSI │ │ tar.gz  │  │
+│  │          │ │          │ │      │ │      │ │DEB/RPM │ │ ×2 arch │  │
+│  └──────────┘ └──────────┘ └──────┘ └──────┘ └────────┘ └─────────┘  │
+└──────┬─────────────────────────────────────────────────────────────────┘
+       │ (on git tag v*)
+┌──────▼──────────────────────────────┐
+│  Job 9: GitHub Release              │
+│  All artifacts uploaded             │
+│  Auto-generated release notes       │
+└─────────────────────────────────────┘
 ```
 
-### GitHub Secrets Required
+### GitHub Secrets
 
-| Secret | Description |
-|--------|-------------|
-| `GOOGLE_SERVICES_JSON` | Firebase Android config (never commit) |
-| `GOOGLE_SERVICE_INFO_PLIST` | Firebase iOS config (never commit) |
-| `KEYSTORE_PATH` | Android signing keystore path |
-| `KEYSTORE_PASS` | Keystore password |
-| `KEY_ALIAS` | Key alias |
-| `KEY_PASS` | Key password |
+| Secret | Used By |
+|--------|---------|
+| `GOOGLE_SERVICES_JSON` | Android job |
+| `GOOGLE_SERVICE_INFO_PLIST` | iOS job |
+| `GOOGLE_SERVICE_INFO_PLIST_TVOS` | tvOS job |
+| `KEYSTORE_BASE64` | Android + Android TV |
+| `KEYSTORE_PASS` / `KEY_ALIAS` / `KEY_PASS` | Android signing |
 
 ### Build Targets Matrix
 
-| Target Triple | Platform | Output |
-|--------------|----------|--------|
+| Target | Platform | Output |
+|--------|----------|--------|
 | `aarch64-linux-android` | Android ARM64 | `.so` |
 | `armv7-linux-androideabi` | Android ARMv7 | `.so` |
 | `x86_64-linux-android` | Android x86_64 | `.so` |
-| `aarch64-apple-ios` | iPhone/iPad | XCFramework `.a` |
+| `i686-linux-android` | Android x86 | `.so` |
+| `aarch64-apple-ios` | iPhone/iPad | `.a` |
 | `x86_64-apple-ios` | iOS Simulator | `.a` |
-| `aarch64-apple-darwin` | Apple Silicon Mac | `.dylib` |
+| `aarch64-apple-ios-sim` | iOS Sim ARM64 | `.a` |
+| `aarch64-apple-tvos` | Apple TV | `.a` |
+| `aarch64-apple-tvos-sim` | tvOS Simulator | `.a` |
 | `x86_64-apple-darwin` | Intel Mac | `.dylib` |
-| `x86_64-unknown-linux-gnu` | Linux x64 | `.so` |
+| `aarch64-apple-darwin` | Apple Silicon | `.dylib` |
+| `x86_64-unknown-linux-gnu` | Linux x64 + router | `.so` + `.tar.gz` |
+| `aarch64-unknown-linux-gnu` | Linux ARM64 + router | `.so` + `.tar.gz` |
 | `x86_64-pc-windows-msvc` | Windows x64 | `.dll` |
-
----
-
-## 🔑 How It Works — Deep Dive
-
-### VPN Connection Flow
-
-```
-User taps "Connect"
-       │
-       ▼
-VpnManager.connect()               [Kotlin shared]
-       │
-       ▼
-PlatformVpnBridge.startEngine()    [platform actual]
-       │
-       ├─── Android: starts NodeXVpnService (foreground)
-       │             builds TUN interface via VpnService.Builder
-       │             passes TUN fd to Rust via JNI
-       │
-       ├─── iOS:     starts PacketTunnelProvider via NEVPNManager
-       │             NETunnelProviderProtocol passes config
-       │
-       └─── Desktop: Rust creates /dev/net/tun (Linux)
-                     or utun (macOS) or Wintun (Windows)
-                     sets up routing rules
-       │
-       ▼
-startNodex(config)                 [Rust via UniFFI]
-       │
-       ▼
-arti-client bootstraps Tor
-  → connects to guard relay
-  → fetches Tor consensus
-  → builds 3-hop circuit (guard → middle → exit)
-  → starts SOCKS5 proxy on 127.0.0.1:9050
-       │
-       ▼
-tun2socks relay loop
-  → reads raw IP packets from TUN device
-  → extracts TCP destination (IP + port)
-  → opens SOCKS5 CONNECT through arti
-  → relays data bidirectionally
-  → all traffic exits through selected country
-```
-
-### Country Selection
-
-```kotlin
-// User selects "Germany 🇩🇪"
-vpnManager.selectNode(node)   // Kotlin
-  → platform.setExitNode("DE")
-  → setExitNode("DE")         // Rust JNI/UniFFI call
-  → tor_client.retire_all_circs()  // Drop current circuits
-  → next connection builds circuit with DE exit node
-  // No disconnect needed — seamless switch
-```
-
-### Security Architecture
-
-```
-DNS Leak Prevention:
-  All DNS → iptables/pfctl redirect → 127.0.0.1:5353
-  → DNS-over-Tor listener → resolved via Tor circuit
-
-Kill Switch:
-  If Tor drops → iptables/pfctl blocks all outbound
-  No traffic leaks to real IP
-
-obfs4 Bridges:
-  Traffic fingerprint → scrambled to look like HTTPS
-  Works in China, Iran, Russia, UAE
-```
+| `aarch64-pc-windows-msvc` | Windows ARM64 | `.dll` |
 
 ---
 
@@ -486,57 +487,47 @@ obfs4 Bridges:
 | **Code** | Open source — auditable |
 | **Auth data** | Firebase Auth (email hash only, no VPN usage data) |
 
-### Threat Model
-
 ✅ **Protects against:** ISP surveillance, government monitoring, geo-blocks, DPI  
-✅ **Bypasses:** Firewalls (with obfs4 bridges), IP-based blocks  
-⚠️ **Does not protect against:** Tor exit relay monitoring of unencrypted traffic, browser fingerprinting, compromised endpoints  
+✅ **Bypasses:** Firewalls with obfs4 bridges  
+⚠️ **Router UDP caveat:** Tor is TCP-only — UDP game traffic (PS5, Xbox Live) uses real IP  
 
 ---
 
 ## ❓ FAQ
 
-**Q: Do I need to set up any servers?**  
-No. NodeX VPN uses the Tor network — thousands of volunteer relays worldwide. Zero infrastructure cost, zero maintenance.
+**Q: My Smart TV has no VPN app. Can I protect it?**  
+Yes — install NodeX VPN on your router. Every device on your LAN (Smart TV, Roku, PS5, Xbox, IoT) is automatically routed through Tor with zero setup on those devices.
+
+**Q: Android TV vs regular Android — same APK?**  
+No. `androidApp` is for phones/tablets. `androidTvApp` has Leanback launcher integration, D-pad navigation, and a TV-optimized UI. Both share the same Rust VPN core and JNI libs.
+
+**Q: Does the Apple TV app support full VPN?**  
+Yes, via `NEAppProxyProvider`. tvOS 16+ allows full proxy-level VPN through NetworkExtension. The same Rust/Tor engine powers it as on iOS.
 
 **Q: Can I change countries without disconnecting?**  
-Yes. Select any of the 18 exit countries and the circuit rebuilds seamlessly in the background without dropping your connection.
+Yes. Select any of 18 exit countries — the circuit rebuilds seamlessly in the background.
 
-**Q: Does it work in censored regions (China, Iran)?**  
-Yes, with obfs4 bridges enabled in Settings. Bridges disguise Tor traffic as regular HTTPS.
+**Q: Does it work in censored regions?**  
+Yes, with obfs4 bridges enabled. Traffic is disguised as HTTPS. Works in China, Iran, Russia, UAE.
 
-**Q: Is google-services.json included in the repo?**  
-No — never. It's injected at build time via GitHub Actions secrets. The repo contains zero credentials.
-
-**Q: Why Rust for the core?**  
-Memory safety without garbage collection = zero latency spikes, no use-after-free bugs, deterministic performance at 1M+ concurrent connections.
-
-**Q: How is the desktop app privileged for TUN creation?**  
-Linux: `pkexec` / `sudo`. macOS: `osascript` with admin privileges dialog. Windows: PowerShell UAC elevation. All handled automatically on first connect.
-
-**Q: What happens if the VPN drops?**  
-Kill Switch (enabled by default) immediately blocks all outbound traffic via iptables/pfctl/WFP rules until the VPN reconnects or you manually disable it.
+**Q: Is google-services.json in the repo?**  
+Never — injected at build time via CI secrets only.
 
 ---
 
 ## 🤝 Contributing
 
+**High-priority contributions:**
+- pfSense / OPNsense support (`x86_64-unknown-freebsd` + BSD `pf` rules)
+- Synology NAS SPK package format
+- Amazon Fire TV Play Store listing
+- UDP relay via QUIC-over-Tor research
+
 ```bash
-# Fork the repo, then:
 git checkout -b feature/your-feature
-# Make changes
-cargo test          # Rust tests
-./gradlew test      # Kotlin tests
-git push origin feature/your-feature
+cargo test && ./gradlew test
 # Open a Pull Request
 ```
-
-**Areas for contribution:**
-- Additional exit country support
-- UDP relay implementation (QUIC over Tor)
-- Tor consensus parsing for dynamic node list
-- iOS/macOS stats IPC via `sendProviderMessage`
-- Windows Wintun packet relay completion
 
 ---
 

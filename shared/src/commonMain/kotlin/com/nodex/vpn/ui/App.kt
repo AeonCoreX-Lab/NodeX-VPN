@@ -89,10 +89,13 @@ fun NodeXApp(
                 }
             }
 
-            // Auto-route on auth change
+            // Auto-route on auth change (only after splash has navigated away)
+            // FIX: Previously this also triggered during splash if authState arrived
+            // early, overwriting the route before SplashScreen.onFinished was called.
             LaunchedEffect(authState) {
+                if (route == AppRoute.Splash) return@LaunchedEffect  // splash handles its own routing
                 when {
-                    authState is AuthState.Authenticated && route == AppRoute.Auth -> route = AppRoute.Main
+                    authState is AuthState.Authenticated  && route == AppRoute.Auth -> route = AppRoute.Main
                     authState is AuthState.Unauthenticated && route == AppRoute.Main -> route = AppRoute.Auth
                 }
             }

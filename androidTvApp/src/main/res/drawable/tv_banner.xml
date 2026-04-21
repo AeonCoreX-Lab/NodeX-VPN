@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV home screen banner: 320x180dp (xhdpi: 640x360px) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <!-- Background -->
+    <path android:fillColor="#0D0F14"
+        android:pathData="M0,0 L320,0 L320,180 L0,180 Z"/>
+    <!-- Glow accent -->
+    <path android:fillColor="#1A00D4FF"
+        android:pathData="M0,60 Q80,0 160,40 Q240,80 320,20 L320,180 L0,180 Z"/>
+    <!-- Shield icon group -->
+    <path android:fillColor="#00D4FF"
+        android:pathData="M50,50 L50,90 Q50,115 70,128 L80,134 L90,128 Q110,115 110,90 L110,50 L80,42 Z"/>
+    <path android:fillColor="#0D0F14"
+        android:pathData="M65,75 L75,85 L95,65"
+        android:strokeColor="#0D0F14"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"/>
+    <!-- App name -->
+    <path android:fillColor="#E8F0FE"
+        android:pathData="M130,68 L138,68 L138,112 L130,112 Z"/>
+    <path android:fillColor="#E8F0FE"
+        android:pathData="M144,68 L152,68 L162,96 L172,68 L180,68 L166,112 L158,112 Z"/>
+    <!-- "VPN" text hint via simple bars -->
+    <path android:fillColor="#00D4FF" android:pathData="M130,120 L200,120 L200,124 L130,124 Z"/>
+    <path android:fillColor="#00D4FF" android:pathData="M130,130 L180,130 L180,133 L130,133 Z"/>
+    <!-- Tagline pill -->
+    <path android:fillColor="#1A00D4FF"
+        android:pathData="M218,86 Q218,78 226,78 L300,78 Q308,78 308,86 L308,94 Q308,102 300,102 L226,102 Q218,102 218,94 Z"/>
+    <path android:fillColor="#00D4FF"
+        android:pathData="M226,87 L300,87 L300,90 L226,90 Z"/>
+    <path android:fillColor="#00D4FF"
+        android:pathData="M226,93 L285,93 L285,96 L226,96 Z"/>
+</vector>

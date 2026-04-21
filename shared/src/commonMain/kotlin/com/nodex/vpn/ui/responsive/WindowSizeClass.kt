@@ -5,12 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-// ── Breakpoints ───────────────────────────────────────────────────────────────
-//  Compact  : < 600dp   → Phone portrait
-//  Medium   : 600–1200dp → Tablet / Phone landscape
-//  Expanded : > 1200dp  → Desktop / Large tablet
-
-enum class WindowWidthClass { Compact, Medium, Expanded }
+enum class WindowWidthClass  { Compact, Medium, Expanded }
 enum class WindowHeightClass { Compact, Medium, Expanded }
 
 data class WindowSizeClass(
@@ -18,42 +13,37 @@ data class WindowSizeClass(
     val heightClass: WindowHeightClass,
     val widthDp:     Dp,
     val heightDp:    Dp,
+    /** True when running on Android TV or Apple TV (tvOS). Changes nav model and focus behaviour. */
+    val isTV: Boolean = false,
 ) {
     val isCompact:  Boolean get() = widthClass == WindowWidthClass.Compact
     val isMedium:   Boolean get() = widthClass == WindowWidthClass.Medium
     val isExpanded: Boolean get() = widthClass == WindowWidthClass.Expanded
 
-    /** Phone: single-column layout */
-    val isPhone:    Boolean get() = isCompact
-    /** Tablet: two-pane layout */
-    val isTablet:   Boolean get() = isMedium
-    /** Desktop: full sidebar + multi-pane */
-    val isDesktop:  Boolean get() = isExpanded
+    val isPhone:   Boolean get() = isCompact
+    val isTablet:  Boolean get() = isMedium
+    val isDesktop: Boolean get() = isExpanded && !isTV
 
-    /** Nav type appropriate for window size */
-    val navType: NavType get() = when (widthClass) {
-        WindowWidthClass.Compact  -> NavType.BottomBar
-        WindowWidthClass.Medium   -> NavType.Rail
-        WindowWidthClass.Expanded -> NavType.Sidebar
+    val navType: NavType get() = when {
+        isTV              -> NavType.TvSidebar
+        isExpanded        -> NavType.Sidebar
+        isMedium          -> NavType.Rail
+        else              -> NavType.BottomBar
     }
 
-    /** Content max width for centered layouts on large screens */
     val contentMaxWidth: Dp get() = when (widthClass) {
         WindowWidthClass.Compact  -> Dp.Unspecified
         WindowWidthClass.Medium   -> 840.dp
         WindowWidthClass.Expanded -> 1400.dp
     }
 
-    /** Sidebar width on expanded screens */
-    val sidebarWidth: Dp get() = 260.dp
-
-    /** Rail width on medium screens */
-    val railWidth: Dp get() = 80.dp
+    val sidebarWidth: Dp get() = if (isTV) 300.dp else 260.dp
+    val railWidth:    Dp get() = 80.dp
 }
 
-enum class NavType { BottomBar, Rail, Sidebar }
+enum class NavType { BottomBar, Rail, Sidebar, TvSidebar }
 
-fun windowSizeClassOf(widthDp: Dp, heightDp: Dp): WindowSizeClass {
+fun windowSizeClassOf(widthDp: Dp, heightDp: Dp, isTV: Boolean = false): WindowSizeClass {
     val wClass = when {
         widthDp < 600.dp  -> WindowWidthClass.Compact
         widthDp < 1200.dp -> WindowWidthClass.Medium
@@ -64,14 +54,9 @@ fun windowSizeClassOf(widthDp: Dp, heightDp: Dp): WindowSizeClass {
         heightDp < 900.dp -> WindowHeightClass.Medium
         else              -> WindowHeightClass.Expanded
     }
-    return WindowSizeClass(wClass, hClass, widthDp, heightDp)
+    return WindowSizeClass(wClass, hClass, widthDp, heightDp, isTV)
 }
 
-// ── Composition local ─────────────────────────────────────────────────────────
 val LocalWindowSizeClass = staticCompositionLocalOf {
-    WindowSizeClass(
-        WindowWidthClass.Compact,
-        WindowHeightClass.Medium,
-        400.dp, 800.dp,
-    )
+    WindowSizeClass(WindowWidthClass.Compact, WindowHeightClass.Medium, 400.dp, 800.dp)
 }

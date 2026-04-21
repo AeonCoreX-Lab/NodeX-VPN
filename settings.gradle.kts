@@ -18,4 +18,5 @@ dependencyResolutionManagement {
 
 include(":shared")
 include(":androidApp")
+include(":androidTvApp")
 include(":desktopApp")

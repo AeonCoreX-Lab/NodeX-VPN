@@ -28,6 +28,15 @@ pub mod platform {
         pub async fn stop_tunnel() { windows::stop().await; }
     }
 
+    // FreeBSD: pfSense / OPNsense — pf(4) anchors + /dev/tun0
+    #[cfg(target_os = "freebsd")]
+    mod inner {
+        use super::*;
+        use crate::tunnel::bsd;
+        pub async fn start_tunnel(s: &str, t: Arc<TorEngine>, st: Arc<StatsTracker>) -> anyhow::Result<()> { bsd::start(s, t, st).await }
+        pub async fn stop_tunnel() { bsd::stop().await; }
+    }
+
     // Mobile: TUN managed by OS (VpnService / NetworkExtension)
     #[cfg(any(target_os = "android", target_os = "ios"))]
     mod inner {
@@ -41,7 +50,7 @@ pub mod platform {
 
     #[cfg(not(any(
         target_os = "linux", target_os = "macos", target_os = "windows",
-        target_os = "android", target_os = "ios"
+        target_os = "android", target_os = "ios", target_os = "freebsd"
     )))]
     mod inner {
         use super::*;
@@ -57,3 +66,4 @@ pub mod platform {
 #[cfg(target_os = "linux")]   pub mod linux;
 #[cfg(target_os = "macos")]   pub mod macos;
 #[cfg(target_os = "windows")] pub mod windows;
+#[cfg(target_os = "freebsd")] pub mod bsd;

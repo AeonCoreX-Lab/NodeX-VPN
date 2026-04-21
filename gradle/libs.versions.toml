@@ -13,6 +13,7 @@ androidxCore              = "1.15.0"
 googleServices            = "4.4.2"
 firebaseBom               = "33.7.0"
 googlePlayServicesAuth    = "21.3.0"
+androidxTv                = "1.0.0"
 
 [libraries]
 kotlinx-coroutines-core       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",       version.ref = "coroutines" }
@@ -36,6 +37,10 @@ koin-compose                  = { module = "io.insert-koin:koin-compose",       
 androidx-activity-compose     = { module = "androidx.activity:activity-compose",          version.ref = "androidxActivityCompose" }
 androidx-lifecycle-viewmodel  = { module = "androidx.lifecycle:lifecycle-viewmodel",       version.ref = "androidxLifecycle" }
 androidx-core-ktx             = { module = "androidx.core:core-ktx",                      version.ref = "androidxCore" }
+
+# Compose for TV — stable 1.0.0 (Material3 + Foundation for D-pad navigation)
+androidx-tv-foundation        = { module = "androidx.tv:tv-foundation",                   version.ref = "androidxTv" }
+androidx-tv-material          = { module = "androidx.tv:tv-material",                     version.ref = "androidxTv" }
 
 firebase-bom                  = { module = "com.google.firebase:firebase-bom",            version.ref = "firebaseBom" }
 firebase-auth                 = { module = "com.google.firebase:firebase-auth-ktx" }

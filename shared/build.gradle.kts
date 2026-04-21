@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
-    // CocoaPods integration — exposes pod() deps to iosMain source sets
+    // CocoaPods integration — exposes pod() deps to iosMain + tvosMain source sets
     id("org.jetbrains.kotlin.native.cocoapods")
 }
 
@@ -21,8 +21,10 @@ kotlin {
     }
 
     // ── iOS ───────────────────────────────────────────────────────────────────
-    // Targets declared here; framework config lives in cocoapods{} below
     iosX64(); iosArm64(); iosSimulatorArm64()
+
+    // ── tvOS ──────────────────────────────────────────────────────────────────
+    tvosX64(); tvosArm64(); tvosSimulatorArm64()
 
     // ── Desktop (JVM) ─────────────────────────────────────────────────────────
     jvm("desktop") {
@@ -41,7 +43,6 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
 
-                // Resources — needed for Compose Multiplatform resource system
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
 
@@ -49,12 +50,10 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.datetime)
 
-                // Ktor
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.json)
 
-                // Koin DI
                 implementation(libs.koin.core)
                 implementation(libs.koin.compose)
             }
@@ -68,7 +67,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.koin.android)
-                // Firebase + GMS — needed by AuthRepository.android.kt
                 // NOTE: platform() inside KMP sourceSets does NOT accept Provider<MinimalExternalModuleDependency>
                 // (i.e. libs.firebase.bom directly). Passing a Provider causes:
                 //   "Cannot convert map(valueof(DependencyValueSource)) to type Dependency"
@@ -80,16 +78,34 @@ kotlin {
             }
         }
 
-        // ── iOS ───────────────────────────────────────────────────────────────
-        val iosMain by creating {
+        // ── Apple shared (iOS + tvOS share Darwin/Foundation/Ktor) ────────────
+        val appleMain by creating {
             dependsOn(commonMain)
             dependencies {
+                // Darwin Ktor engine used by both iOS and tvOS
                 implementation(libs.ktor.client.darwin)
             }
+        }
+
+        // ── iOS ───────────────────────────────────────────────────────────────
+        val iosMain by creating {
+            dependsOn(appleMain)
+            // UIKit + NetworkExtension available via KN platform interop (no extra deps)
         }
         val iosX64Main            by getting { dependsOn(iosMain) }
         val iosArm64Main          by getting { dependsOn(iosMain) }
         val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
+
+        // ── tvOS ──────────────────────────────────────────────────────────────
+        // tvOS shares Apple auth (FirebaseAuth via CocoaPods) but has NO NetworkExtension.
+        // VPN tunneling is unavailable on tvOS — the TV app acts as a remote control
+        // for a paired iPhone/Mac running NodeX VPN.
+        val tvosMain by creating {
+            dependsOn(appleMain)
+        }
+        val tvosX64Main            by getting { dependsOn(tvosMain) }
+        val tvosArm64Main          by getting { dependsOn(tvosMain) }
+        val tvosSimulatorArm64Main by getting { dependsOn(tvosMain) }
 
         // ── Desktop ───────────────────────────────────────────────────────────
         val desktopMain by getting {
@@ -97,7 +113,6 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.ktor.client.cio)
-                // JNA — needed by PlatformVpnBridge.desktop.kt to load the Rust native library
                 implementation("net.java.dev.jna:jna:5.14.0")
                 implementation("net.java.dev.jna:jna-platform:5.14.0")
             }
@@ -105,15 +120,27 @@ kotlin {
     }
 
     // ── CocoaPods ─────────────────────────────────────────────────────────────
-    // IMPORTANT: cocoapods{} is an extension on KotlinMultiplatformExtension,
-    // so it must live INSIDE kotlin{}, not at the top level.
+    // cocoapods{} is an extension on KotlinMultiplatformExtension — must be INSIDE kotlin{}.
     cocoapods {
         summary  = "NodeX VPN shared KMP library"
         homepage = "https://github.com/AeonCoreX/NodeX-VPN"
         version  = "1.0"
-        ios.deploymentTarget = "16.0"
-        pod("FirebaseAuth") { version = "~> 11.6" }
-        pod("GoogleSignIn") { version = "~> 8.0"  }
+        ios.deploymentTarget  = "16.0"
+        tvos.deploymentTarget = "16.0"
+        pod("FirebaseAuth") {
+            version    = "~> 11.6"
+            // FIX: Xcode 16.4 + iOS SDK 18.5 cinterop fails with:
+            //   c_standard_library.modulemap:313: module '_stddef' requires
+            //   feature 'found_incompatible_headers__check_search_paths'
+            // Root cause: KN cinterop passes -fmodules which triggers a clang
+            // modulemap header-search-path validation bug in SDK 18.5.
+            // Fix: disable module mode so cinterop uses plain -I includes.
+            extraOpts = listOf("-compiler-option", "-fno-modules")
+        }
+        pod("GoogleSignIn") {
+            version   = "~> 8.0"
+            extraOpts = listOf("-compiler-option", "-fno-modules")
+        }
         framework {
             baseName  = "shared"
             isStatic  = true
@@ -125,7 +152,7 @@ kotlin {
     }
 }
 
-// ── Compose Resources configuration ──────────────────────────────────────────
+// ── Compose Resources ─────────────────────────────────────────────────────────
 compose.resources {
     publicResClass    = true
     packageOfResClass = "com.nodex.vpn.shared"
@@ -142,7 +169,7 @@ android {
     }
 }
 
-// ── Rust JNI/NDK linking task ─────────────────────────────────────────────────
+// ── Rust JNI copy task (local development) ────────────────────────────────────
 tasks.register("copyRustLibs") {
     val targets = mapOf(
         "aarch64-linux-android"   to "arm64-v8a",
