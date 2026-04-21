@@ -4,7 +4,7 @@ version      = "0.1.0"
 edition      = "2021"
 authors      = ["NodeX VPN Team"]
 description  = "Production-grade Tor-based VPN core engine"
-rust-version = "1.80"
+rust-version = "1.82"
 
 [lib]
 name       = "nodex_vpn_core"
@@ -21,22 +21,22 @@ path = "src/uniffi_bindgen.rs"
 [dependencies]
 # FIX: "cli" feature is required to expose uniffi::uniffi_bindgen_main()
 # used by the uniffi-bindgen binary target (src/uniffi_bindgen.rs).
-# Without it: error[E0425] cannot find function `uniffi_bindgen_main` in crate `uniffi`
+# Without it: error[E0425] cannot find function `uniffi_bindgen_main`
 uniffi = { version = "0.31", features = ["tokio", "cli"] }
 
-# arti-client 0.22 (production-stable Tor implementation)
-arti-client = { version = "0.22", features = [
+# arti-client 0.41 — latest stable Tor implementation
+# All tor-* crates MUST be the same version as arti-client (monorepo).
+arti-client = { version = "0.41", features = [
     "tokio",
     "bridge-client",
     "pt-client",
     "onion-service-client",
 ]}
-tor-config     = "0.22"
-tor-rtcompat   = { version = "0.22", features = ["tokio"] }
-tor-socksproto = "0.22"
-# FIX: Required for BridgeConfig — arti_client::config::BridgeConfig is private,
-# the canonical public type lives in tor_guardmgr::bridge.
-tor-guardmgr   = { version = "0.22", features = ["bridge-client"] }
+tor-config     = "0.41"
+tor-rtcompat   = { version = "0.41", features = ["tokio"] }
+tor-socksproto = "0.41"
+# tor-guardmgr: BridgeConfigBuilder lives here for runtime bridge parsing
+tor-guardmgr   = { version = "0.41", features = ["bridge-client"] }
 
 # Async runtime
 tokio       = { version = "1", features = ["full"] }
@@ -66,31 +66,26 @@ async-trait = "0.1"
 chrono      = { version = "0.4", features = ["serde"] }
 uuid        = { version = "1", features = ["v4"] }
 
-# DNS parsing (production DNS-over-Tor resolver)
-hickory-proto = { version = "0.26", default-features = false, features = ["tokio"] }
-
-# ── Intentionally pinned — DO NOT auto-update ─────────────────────────────
-# arti-client + all tor-* crates MUST be updated together as a set.
-# Current: v0.22.x → Available: v0.41.x
-# Upgrading requires full API migration (TorClientConfig, BridgeConfig, etc.)
-# Track in: https://github.com/AeonCoreX-Lab/NodeX-VPN/issues/XX
-#
-# rusqlite is a transitive dep of arti (tor-dirmgr SQLite cache).
-# Its version MUST stay in sync with what arti-client 0.22 expects.
-# Update rusqlite ONLY when updating arti-client.
-#
-# rtnetlink: 0.15→0.21 is a major API overhaul (NetlinkMessage redesign).
-# Update requires rewriting tunnel/linux.rs routing setup. Track separately.
-# ─────────────────────────────────────────────────────────────────────────────
+# FIX: hickory-proto 0.26.0 DROPPED the `tokio` feature entirely.
+# The feature is gone — `available features: __dnssec, access-control,
+# default, dnssec-aws-lc-rs, dnssec-ring, mdns, no-std-rand, serde, std,
+# testing, wasm-bindgen`.
+# Our code never imports hickory-proto directly (zero `use hickory_proto::` 
+# anywhere) — it is purely a transitive dep of arti-client.
+# Declaring it here WITHOUT the non-existent `tokio` feature ensures cargo
+# picks 0.26 (matching arti's transitive requirement) while not requesting
+# a feature that would fail the resolver on every single target.
+hickory-proto = { version = "0.26", default-features = false }
 
 # FIX: arti-client pulls rusqlite as a transitive dep (via tor-dirmgr cache).
 # By default rusqlite links to the system libsqlite3, which does NOT exist on
-# Android NDK or Windows CI runners - linker fails with:
+# Android NDK or Windows CI runners — linker fails with:
 #   Android: "unable to find library -lsqlite3"
 #   Windows: "cannot open input file 'sqlite3.lib'"
 # Adding rusqlite here with the "bundled" feature forces cargo to compile
-# SQLite from source and link it statically - no system library needed.
-rusqlite = { version = "0.31", features = ["bundled"] }
+# SQLite from source and link it statically — no system library needed.
+# Version must match what arti-client 0.41 expects (0.32.x).
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 # ── Platform-specific ─────────────────────────────────────────────────────────
 [target.'cfg(target_os = "windows")'.dependencies]

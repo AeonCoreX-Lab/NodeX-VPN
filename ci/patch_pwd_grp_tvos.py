@@ -2,12 +2,15 @@
 """
 patch_pwd_grp_tvos.py — CI helper for NodeX VPN
 
-pwd-grp v0.1.1 (transitive dep: arti-client → pwd-grp) references
+pwd-grp v0.1.x (transitive dep: arti-client → pwd-grp) references
 libc::getresuid and libc::getresgid in lmockable.rs. These POSIX calls
 exist on Linux, macOS, and iOS but are ABSENT from tvOS's restricted libc:
 
   error[E0425]: cannot find value `getresuid` in crate `libc`
-    --> pwd-grp-0.1.1/src/lmockable.rs:82:16
+    --> pwd-grp-0.1.x/src/lmockable.rs:82:16
+
+NOTE (arti-client 0.41): arti may no longer depend on pwd-grp directly.
+This script exits cleanly if pwd-grp is not present in the registry cache.
 
 This script:
   1. Finds pwd-grp in the Cargo registry cache (~/.cargo/registry/src/)
@@ -24,10 +27,7 @@ import pathlib
 import re
 import sys
 
-GUARD = '#[cfg(not(target_os = "tvos"))]'
-
-# Matches any line containing getresuid or getresgid (field declarations,
-# function calls, match arms, etc.) while capturing leading whitespace.
+GUARD   = '#[cfg(not(target_os = "tvos"))]'
 PATTERN = re.compile(
     r'^([ \t]*)(.+getres(?:uid|gid).+)',
     re.MULTILINE
@@ -35,12 +35,10 @@ PATTERN = re.compile(
 
 
 def patch_file(path: pathlib.Path) -> bool:
-    """Add tvOS cfg guard before problematic lines. Returns True if file changed."""
     text = path.read_text(encoding="utf-8")
 
     def replacer(m: re.Match) -> str:
         indent, rest = m.group(1), m.group(2)
-        # Don't double-guard lines that are already guarded
         if GUARD in text[max(0, m.start() - len(GUARD) - 5) : m.start()]:
             return m.group(0)
         return f"{indent}{GUARD}\n{indent}{rest}"
@@ -57,7 +55,7 @@ def regenerate_checksum(pkg_dir: pathlib.Path) -> None:
 
     Cargo verifies SHA-256 of every file in the package on each build.
     If we modify a source file without updating this JSON, Cargo aborts with:
-      'checksum for `pwd-grp v0.1.1` changed ...'
+      'checksum for `pwd-grp vX.Y.Z` changed ...'
     """
     file_hashes: dict[str, str] = {}
     for p in sorted(pkg_dir.rglob("*")):
@@ -78,7 +76,8 @@ def main() -> None:
     pwd_grp_dirs = list(registry_src.glob("*/pwd-grp-*"))
 
     if not pwd_grp_dirs:
-        print("patch_pwd_grp_tvos: pwd-grp not found in Cargo registry — nothing to patch")
+        # arti-client 0.41 may no longer pull pwd-grp — nothing to do.
+        print("patch_pwd_grp_tvos: pwd-grp not in registry cache — no patch needed")
         sys.exit(0)
 
     pkg_dir = pwd_grp_dirs[0]
@@ -91,7 +90,7 @@ def main() -> None:
             print(f"  Patched: {src_file.name}")
 
     if not patched:
-        print("  Already patched or no matching lines found — skipping checksum update")
+        print("  Already patched or no matching lines — skipping checksum update")
         return
 
     regenerate_checksum(pkg_dir)

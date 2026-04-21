@@ -67,7 +67,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             rust-core/target
-          key: rust-${{ matrix.target }}-${{ hashFiles('rust-core/Cargo.lock') }}
+          key: rust-v2-${{ matrix.target }}-${{ hashFiles('rust-core/Cargo.lock') }}
 
       - name: Install Android NDK + cargo-ndk
         if:   matrix.group == 'android'

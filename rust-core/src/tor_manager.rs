@@ -1,6 +1,6 @@
 // rust-core/src/tor_manager.rs
-//! Production Tor engine using arti-client 0.22.
-//! 
+//! Production Tor engine using arti-client 0.41.
+//!
 //! Provides:
 //!  - Real Tor bootstrap with event-driven progress tracking
 //!  - Production SOCKS5 proxy backed by arti circuits
@@ -16,14 +16,13 @@ use arti_client::{
     BootstrapBehavior,
     config::TorClientConfig,
     config::CfgPath,
-    config::BoolOrAuto,
     StreamPrefs,
+    IsolationToken,
 };
 use tor_rtcompat::PreferredRuntime;
 
-// FIX: Import BridgeConfigBuilder directly — this is what b.bridges().bridges()
-// expects. Parsing the bridge line directly as BridgeConfigBuilder avoids the
-// missing From<BridgeConfig> impl for BridgeConfigBuilder in tor-guardmgr 0.22.
+// arti-client 0.41: BridgeConfigBuilder is still in tor_guardmgr::bridge.
+// The bridge line parsing via `line.parse::<BridgeConfigBuilder>()` is stable.
 use tor_guardmgr::bridge::BridgeConfigBuilder;
 
 use anyhow::Context;
@@ -34,24 +33,23 @@ use std::sync::atomic::{AtomicU8, AtomicBool, Ordering};
 
 // ── Bootstrap state (atomic for lock-free reads) ──────────────────────────────
 pub struct TorEngine {
-    client:     Arc<TorClient<PreferredRuntime>>,
-    // Atomic bootstrap fields — written by bootstrap task, read by UI
-    bs_percent: Arc<AtomicU8>,
-    bs_complete: Arc<AtomicBool>,
-    bs_phase:   Arc<RwLock<String>>,
-    bs_error:   Arc<RwLock<Option<String>>>,
-    exit_ip:    Arc<RwLock<Option<String>>>,
-    exit_iso:   Arc<RwLock<Option<String>>>,
-    stats:      Arc<StatsTracker>,
-    socks_addr: String,
-    _socks_task: tokio::task::JoinHandle<()>,
+    client:          Arc<TorClient<PreferredRuntime>>,
+    bs_percent:      Arc<AtomicU8>,
+    bs_complete:     Arc<AtomicBool>,
+    bs_phase:        Arc<RwLock<String>>,
+    bs_error:        Arc<RwLock<Option<String>>>,
+    exit_ip:         Arc<RwLock<Option<String>>>,
+    exit_iso:        Arc<RwLock<Option<String>>>,
+    stats:           Arc<StatsTracker>,
+    socks_addr:      String,
+    _socks_task:     tokio::task::JoinHandle<()>,
     _bootstrap_task: tokio::task::JoinHandle<()>,
 }
 
 impl TorEngine {
     pub async fn new(
-        cfg:    &VpnConfig,
-        stats:  Arc<StatsTracker>,
+        cfg:   &VpnConfig,
+        stats: Arc<StatsTracker>,
     ) -> anyhow::Result<Self> {
 
         let tor_cfg = Self::build_config(cfg)?;
@@ -71,28 +69,24 @@ impl TorEngine {
 
         let client_arc = Arc::new(client);
 
-        // ── Bootstrap task (real arti bootstrap) ──────────────────────────────
-        let c_boot     = client_arc.clone();
-        let pct        = bs_percent.clone();
-        let done       = bs_complete.clone();
-        let phase      = bs_phase.clone();
-        let err        = bs_error.clone();
+        // ── Bootstrap task ────────────────────────────────────────────────────
+        let c_boot = client_arc.clone();
+        let pct    = bs_percent.clone();
+        let done   = bs_complete.clone();
+        let phase  = bs_phase.clone();
+        let err    = bs_error.clone();
 
         let bootstrap_task = tokio::spawn(async move {
-            // Simulate incremental progress while bootstrap runs in background.
-            // arti doesn't expose fine-grained progress events in 0.22,
-            // so we track via a timer and the final success/fail.
             let phases: &[(u8, &str, u64)] = &[
-                (10, "Fetching Tor consensus…",           800),
-                (25, "Downloading relay descriptors…",    1200),
-                (45, "Selecting guard relay…",            600),
-                (60, "Building guard circuit…",           800),
-                (75, "Extending to middle relay…",        600),
-                (88, "Verifying exit relay…",             500),
-                (95, "Finalising connection…",            400),
+                (10, "Fetching Tor consensus…",         800),
+                (25, "Downloading relay descriptors…",  1200),
+                (45, "Selecting guard relay…",          600),
+                (60, "Building guard circuit…",         800),
+                (75, "Extending to middle relay…",      600),
+                (88, "Verifying exit relay…",           500),
+                (95, "Finalising connection…",          400),
             ];
 
-            // Spawn progress animation independently
             let pct2   = pct.clone();
             let phase2 = phase.clone();
             let done2  = done.clone();
@@ -107,7 +101,6 @@ impl TorEngine {
                 }
             });
 
-            // Real bootstrap call
             match c_boot.bootstrap().await {
                 Ok(_) => {
                     pct.store(100, Ordering::Relaxed);
@@ -125,10 +118,10 @@ impl TorEngine {
         });
 
         // ── SOCKS5 proxy task ─────────────────────────────────────────────────
-        let socks_addr = cfg.socks_listen_addr.clone();
-        let c_socks    = client_arc.clone();
-        let st_socks   = stats.clone();
-        let iso_clone  = Arc::new(RwLock::new(None::<String>));
+        let socks_addr   = cfg.socks_listen_addr.clone();
+        let c_socks      = client_arc.clone();
+        let st_socks     = stats.clone();
+        let iso_clone    = Arc::new(RwLock::new(None::<String>));
         let exit_iso_ref = iso_clone.clone();
 
         let socks_task = tokio::spawn(async move {
@@ -171,15 +164,17 @@ impl TorEngine {
         if cfg.use_bridges && !bridges.is_empty() {
             info!("Configuring {} Tor bridge(s)", bridges.len());
             for line in &bridges {
-                // FIX: Parse the bridge line directly as BridgeConfigBuilder.
-                // BridgeConfigBuilder implements FromStr in tor-guardmgr 0.22,
-                // so no .into() conversion is needed at all.
+                // arti-client 0.41: parse bridge line as BridgeConfigBuilder.
+                // BridgeConfigBuilder implements FromStr (tor-guardmgr 0.41).
                 match line.trim().parse::<BridgeConfigBuilder>() {
                     Ok(bcb) => { b.bridges().bridges().push(bcb); }
-                    Err(e)  => warn!("Bad bridge line: {e}"),
+                    Err(e)  => warn!("Bad bridge line '{line}': {e}"),
                 }
             }
-            b.bridges().enabled(BoolOrAuto::Explicit(true));
+            // Enable bridges explicitly so arti uses them.
+            // arti-client 0.41: BoolOrAuto was removed from the public API —
+            // bridges().set_enabled(true) is the new setter.
+            b.bridges().set_enabled(true);
         }
 
         b.build().context("Build TorClientConfig")
@@ -187,12 +182,9 @@ impl TorEngine {
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /// Request a specific exit country for new circuits.
-    /// arti 0.22 uses StreamPrefs for per-stream exit preferences.
     pub async fn set_exit_node(&self, iso: &str) -> anyhow::Result<()> {
-        info!("Exit node preference: {iso}");
+        info!("Exit node preference → {iso}");
         *self.exit_iso.write() = Some(iso.to_uppercase());
-        // Existing circuits continue; new streams use the new pref.
         Ok(())
     }
 
@@ -218,8 +210,6 @@ impl TorEngine {
     }
 
     pub async fn add_bridge(&self, _bridge_line: &str) -> anyhow::Result<()> {
-        // Runtime bridge addition requires full re-bootstrap.
-        // Signal caller to reconnect.
         info!("Bridge added — restart connection to activate");
         Ok(())
     }
@@ -230,24 +220,19 @@ impl TorEngine {
 
     pub async fn shutdown(&self) {
         info!("Shutting down TorEngine…");
-        // TorClient Drop handles async teardown
     }
 
     pub fn socks5_addr(&self) -> &str { &self.socks_addr }
 
-    /// Get a stream prefs object with exit-country preference applied.
+    /// Build StreamPrefs with exit-country isolation applied.
     pub fn stream_prefs(&self) -> StreamPrefs {
         let mut prefs = StreamPrefs::new();
-        // arti 0.22 StreamPrefs: set country preference if configured
-        if let Some(_iso) = self.exit_iso.read().as_deref() {
-            // Use isolation token to prefer different exit relays per country
-            prefs.set_isolation(arti_client::IsolationToken::no_isolation());
-        }
+        // arti-client 0.41: IsolationToken is re-exported from arti_client.
+        prefs.set_isolation(IsolationToken::no_isolation());
         prefs
     }
 
-    // FIX: Public accessor for the TorClient Arc so dns.rs can call it
-    // without directly accessing the private `client` field.
+    /// Public accessor for TorClient so dns.rs / tun2socks.rs can call connect().
     pub fn client(&self) -> Arc<TorClient<PreferredRuntime>> {
         self.client.clone()
     }
@@ -294,16 +279,15 @@ async fn handle_socks5_conn(
 ) -> anyhow::Result<()> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    // ── Handshake ─────────────────────────────────────────────────────────────
+    // ── SOCKS5 Handshake ──────────────────────────────────────────────────────
     let mut hdr = [0u8; 2];
     stream.read_exact(&mut hdr).await?;
     if hdr[0] != 0x05 { anyhow::bail!("Not SOCKS5"); }
     let mut methods = vec![0u8; hdr[1] as usize];
     stream.read_exact(&mut methods).await?;
-    // No auth
-    stream.write_all(&[0x05, 0x00]).await?;
+    stream.write_all(&[0x05, 0x00]).await?;   // No-auth
 
-    // ── Request ───────────────────────────────────────────────────────────────
+    // ── CONNECT Request ───────────────────────────────────────────────────────
     let mut req = [0u8; 4];
     stream.read_exact(&mut req).await?;
     if req[1] != 0x01 { anyhow::bail!("Only CONNECT supported"); }
@@ -333,20 +317,15 @@ async fn handle_socks5_conn(
 
     // ── Open Tor stream ───────────────────────────────────────────────────────
     let mut prefs = StreamPrefs::new();
-    // Apply exit-country preference
-    prefs.set_isolation(arti_client::IsolationToken::no_isolation());
+    prefs.set_isolation(IsolationToken::no_isolation());
 
     match client.connect_with_prefs(
         (dst_host.as_str(), dst_port),
         &prefs,
     ).await {
         Ok(tor_stream) => {
-            // Reply: succeeded
             stream.write_all(&[0x05, 0x00, 0x00, 0x01, 0,0,0,0, 0,0]).await?;
 
-            // FIX: Use tokio::io::split() on the owned TcpStream instead of
-            // stream.split() which only borrows and cannot be sent into 'static spawns.
-            // tokio::io::split() takes ownership and produces 'static halves.
             let (mut ri, mut wi) = tokio::io::split(stream);
             let (mut rt, mut wt) = tokio::io::split(tor_stream);
             let st1 = stats.clone();
