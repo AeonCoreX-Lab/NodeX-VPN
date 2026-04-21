@@ -40,8 +40,8 @@ jobs:
           # ── Linux / Router (x64 + arm64) ─────────────────────────────────
           - { target: x86_64-unknown-linux-gnu,  os: ubuntu-24.04,     group: linux   }
           - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm, group: linux   }
-          # ── FreeBSD x64 (pfSense/OPNsense — uncomment when ready) ─────────
-          # - { target: x86_64-unknown-freebsd, os: ubuntu-24.04, group: freebsd }
+          # ── FreeBSD x64 (pfSense / OPNsense) ─────────────────────────────
+          - { target: x86_64-unknown-freebsd,   os: ubuntu-24.04,     group: freebsd }
           # ── Windows (x64 + arm64) ─────────────────────────────────────────
           - { target: x86_64-pc-windows-msvc,    os: windows-2022,     group: windows }
           - { target: aarch64-pc-windows-msvc,   os: windows-11-arm,   group: windows }
@@ -76,6 +76,18 @@ jobs:
         if:   matrix.group == 'linux'
         run:  sudo apt-get install -y --no-install-recommends libssl-dev pkg-config libdbus-1-dev
 
+      # FreeBSD cross-compilation via cross (uses QEMU + FreeBSD Docker image)
+      - name: Install cross (FreeBSD cross-compiler)
+        if:   matrix.group == 'freebsd'
+        run:  cargo install cross --locked
+
+      - name: Build (FreeBSD — via cross)
+        if:   matrix.group == 'freebsd'
+        working-directory: rust-core
+        run: |
+          # cross handles the FreeBSD sysroot + linker automatically
+          cross build --release --target x86_64-unknown-freebsd
+
       - name: Build (Android)
         if:   matrix.group == 'android'
         working-directory: rust-core
@@ -83,8 +95,8 @@ jobs:
           OPENSSL_STATIC: 1
         run:  cargo ndk -t ${{ matrix.target }} -o ../shared/src/androidMain/jniLibs build --release
 
-      - name: Build (non-Android)
-        if:   matrix.group != 'android'
+      - name: Build (non-Android, non-FreeBSD)
+        if:   matrix.group != 'android' && matrix.group != 'freebsd'
         working-directory: rust-core
         run:  cargo build --release --target ${{ matrix.target }}
 
@@ -546,6 +558,39 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: router-${{ matrix.target }}
+          path: |
+            dist/router/*.tar.gz
+            dist/router/*.spk
+          retention-days: 30
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 8b: Router Package — pfSense / OPNsense (FreeBSD x86_64)
+#   Bundles the FreeBSD binary + setup_pfsense_opnsense.sh into a tarball.
+#   Produces: nodex-vpn-router-x86_64-unknown-freebsd-<ver>.tar.gz
+# ─────────────────────────────────────────────────────────────────────────────
+  router-package-freebsd:
+    name: "Router Package (pfSense/OPNsense — FreeBSD x86_64)"
+    needs: rust-core
+    runs-on: ubuntu-24.04
+    env:
+      TARGET: x86_64-unknown-freebsd
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download FreeBSD Rust binary
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-unknown-freebsd
+          path: rust-core/target/x86_64-unknown-freebsd/release/
+
+      - name: Build FreeBSD router tarball
+        run: |
+          chmod +x router/package.sh
+          NODEX_VERSION="${{ github.ref_name }}" bash router/package.sh             x86_64-unknown-freebsd dist/router/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: router-x86_64-unknown-freebsd
           path: dist/router/*.tar.gz
           retention-days: 30
 
@@ -554,7 +599,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   release:
     name: "GitHub Release"
-    needs: [android, android-tv, ios, tvos, desktop-macos, desktop-linux, desktop-windows, router-package]
+    needs: [android, android-tv, ios, tvos, desktop-macos, desktop-linux, desktop-windows, router-package, router-package-freebsd]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     steps:
