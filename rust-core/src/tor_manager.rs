@@ -172,9 +172,11 @@ impl TorEngine {
                 }
             }
             // Enable bridges explicitly so arti uses them.
-            // arti-client 0.41: BoolOrAuto was removed from the public API —
-            // bridges().set_enabled(true) is the new setter.
-            b.bridges().set_enabled(true);
+            // arti-client 0.41: BridgesConfigBuilder uses builder-style
+            // .enabled(true) — not .set_enabled(true) (which does not exist).
+            // The compiler suggests: "there is a method `enabled` with a
+            // similar name" (E0599). Fix: drop the `set_` prefix.
+            b.bridges().enabled(true);
         }
 
         b.build().context("Build TorClientConfig")
