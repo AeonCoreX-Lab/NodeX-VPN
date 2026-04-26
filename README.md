@@ -11,13 +11,13 @@
 [![Compose Multiplatform](https://img.shields.io/badge/Compose_MP-1.7.3-4285F4?style=flat-square&logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
 [![Tor](https://img.shields.io/badge/Powered_by-Tor_Network-7E4798?style=flat-square)](https://torproject.org)
 [![License](https://img.shields.io/badge/License-MIT-00F5FF?style=flat-square)](LICENSE)
-[![Platforms](https://img.shields.io/badge/Platforms-Android_·_iOS_·_TV_·_macOS_·_Windows_·_Linux_·_Router_·_NAS-green?style=flat-square)](#-platform-support)
+[![Platforms](https://img.shields.io/badge/Platforms-Android_·_iOS_·_TV_·_macOS_·_Windows_·_Linux_·_Router_·_NAS_·_CLI-green?style=flat-square)](#-platform-support)
 
 **A production-ready, serverless VPN built on the Tor network.**  
 **Zero owned servers · Zero logs · 99% IP anonymity · Rust-powered speed**  
-**11 platforms — Android, iOS, tvOS, Android TV, macOS, Windows, Linux, OpenWrt/GL.iNet, Asus Merlin, pfSense/OPNsense, Synology NAS**
+**12 platforms — Android, iOS, tvOS, Android TV, macOS, Windows, Linux, CLI (Termux · Linux · macOS · Windows), OpenWrt/GL.iNet, Asus Merlin, pfSense/OPNsense, Synology NAS**
 
-[Features](#-features) · [Platforms](#-platform-support) · [Architecture](#️-architecture) · [Getting Started](#-getting-started) · [Build](#️-build) · [CI/CD](#-cicd) · [FAQ](#-faq)
+[Features](#-features) · [Platforms](#-platform-support) · [CLI](#️-nodex-vpn-cli) · [Architecture](#️-architecture) · [Getting Started](#-getting-started) · [Build](#️-build) · [Release](#-release-system) · [CI/CD](#-cicd) · [FAQ](#-faq)
 
 ---
 
@@ -65,6 +65,16 @@ Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
 | **Live Traffic Graph** | Real-time bandwidth visualization |
 | **Circuit Management** | Multi-circuit Tor connection pooling |
 
+### 🖥️ CLI (nodex)
+| Feature | Details |
+|---------|---------| 
+| **All Desktop Platforms** | Linux · macOS · Windows · Termux (Android) |
+| **Professional Banner** | AeonCoreX branded ASCII art, ANSI color with NO_COLOR support |
+| **Live Stats** | Real-time upload/download speed, latency, uptime in terminal |
+| **Bootstrap Progress** | Animated progress bar during Tor circuit bootstrap |
+| **Bridge Mode** | Full obfs4 bridge support from command line |
+| **Version System** | Semantic versioning, per-platform build info, auto GitHub Release |
+
 ### 📺 TV & Router (New)
 | Feature | Details |
 |---------|---------|
@@ -94,6 +104,9 @@ Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
 | **Router — Asus Merlin** | aarch64 / x86_64 | TUN + iptables (JFFS2 persistent) | `router/` |
 | **Router — pfSense / OPNsense** | pfSense 2.7+ / OPNsense 24+ (FreeBSD 14) | `/dev/tun0` + `pf(4)` rdr-anchor | `router/` |
 | **NAS — Synology DSM** | DSM 6.2+ or 7.x · x86\_64 / aarch64 | `/dev/net/tun` + iptables · SPK package | `router/` |
+| **CLI — Linux / macOS** | Ubuntu 20.04+ · macOS 13+ | SOCKS5 proxy via Tor | `rust-core/src/bin/` |
+| **CLI — Windows** | Windows 10 x64+ | SOCKS5 proxy via Tor | `rust-core/src/bin/` |
+| **CLI — Termux** | Android 7+ with Termux | SOCKS5 proxy via Tor | `rust-core/src/bin/` |
 
 ### 🔜 Planned Support
 
@@ -260,6 +273,262 @@ curl -fsSL https://github.com/AeonCoreX-Lab/NodeX-VPN/releases/latest/download/s
 
 ---
 
+---
+
+## 🖥️ NodeX VPN CLI
+
+A full-featured command-line VPN client — powered by the same Rust/Tor engine as the mobile apps.
+
+### Installation
+
+**Linux / Termux (Android)**
+```bash
+# From GitHub Release (recommended)
+curl -fsSL https://github.com/AeonCoreX/NodeX-VPN/releases/latest/download/nodex-linux-x86_64-v0.1.0.tar.gz | tar -xz
+sudo mv nodex-linux-x86_64-v0.1.0/nodex /usr/local/bin/
+nodex version
+
+# Termux (no sudo needed)
+tar -xzf nodex-linux-aarch64-v0.1.0.tar.gz
+mv nodex-linux-aarch64-v0.1.0/nodex ~/.local/bin/
+nodex version
+```
+
+**macOS**
+```bash
+curl -fsSL https://github.com/AeonCoreX/NodeX-VPN/releases/latest/download/nodex-macos-arm64-v0.1.0.tar.gz | tar -xz
+sudo mv nodex-macos-arm64-v0.1.0/nodex /usr/local/bin/
+nodex version
+```
+
+**Windows** — download `nodex-windows-x86_64-v0.1.0.zip`, extract, add folder to `PATH`:
+```powershell
+nodex.exe version
+```
+
+**Build from source**
+```bash
+cd rust-core
+cargo build --release --features cli --bin nodex
+# Binary: target/release/nodex  (or nodex.exe on Windows)
+```
+
+---
+
+### Usage
+
+```
+nodex <COMMAND> [OPTIONS]
+
+Commands:
+  connect      Connect to NodeX VPN and show live status
+  status       Show current connection status and stats
+  nodes        List available VPN server nodes
+  logs         Show recent log output
+  version      Show version and build information
+
+Global Options:
+  --quiet      Suppress banner and color output (or set NO_COLOR=1)
+  -h, --help   Print help
+```
+
+---
+
+### Commands in Detail
+
+#### `nodex connect`
+
+```bash
+nodex connect                              # Auto exit country
+nodex connect --country DE                 # Germany exit node
+nodex connect --country NL --verbose       # Netherlands + debug log
+nodex connect --bridge "obfs4 1.2.3.4:443 FINGERPRINT cert=... iat-mode=0"
+nodex connect --socks 0.0.0.0:9050        # Listen on all interfaces
+nodex connect --quiet                      # No banner, pipe-friendly
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--country ISO` | automatic | Exit node country (US, DE, NL, JP, GB…) |
+| `--bridge LINE` | none | obfs4 bridge line (repeatable) |
+| `--socks ADDR` | `127.0.0.1:9050` | SOCKS5 listen address |
+| `--dns ADDR` | `127.0.0.1:5353` | DNS-over-Tor listen address |
+| `--state-dir DIR` | `~/.nodex/state` | Tor state directory |
+| `--cache-dir DIR` | `~/.nodex/cache` | Tor cache directory |
+| `--verbose` / `-v` | off | Debug logging |
+
+**Live output while connected:**
+```
+  [████████████████████████████░░] 100%  Connected!
+
+  ✔ Connected via Tor network
+  › Press Ctrl+C to disconnect.
+
+  ↑ Upload         ↓ Download       Latency      Uptime        Country
+  1.24 MB/s        3.87 MB/s        234 ms       00m 47s       DE
+```
+
+Press `Ctrl+C` to gracefully disconnect.
+
+---
+
+#### `nodex status`
+
+```bash
+nodex status
+```
+
+```
+  Status      :  ✔ Connected
+  Bootstrap   :  100%  Done
+  Exit country:  DE
+  Exit IP     :  185.220.x.x
+  Uptime      :  12m 34s
+  ↑ Upload    :  1.24 MB/s
+  ↓ Download  :  3.87 MB/s
+  Sent total  :  94.3 MB
+  Recv total  :  312.1 MB
+  Latency     :  234 ms
+  Circuits    :  3 active  1 pending
+```
+
+---
+
+#### `nodex nodes`
+
+```bash
+nodex nodes                    # All nodes
+nodex nodes --country NL       # Netherlands only
+nodex nodes --bridges          # Bridge-capable only
+```
+
+```
+  ID         CC    Country              City             Latency   Load  Bridge
+  ────────────────────────────────────────────────────────────────────────────
+  de-fra-01  DE    Germany              Frankfurt         112 ms    23%    ✔
+  nl-ams-01  NL    Netherlands          Amsterdam         134 ms    41%    ✔
+  us-nyc-01  US    United States        New York          187 ms    67%
+  jp-tyo-01  JP    Japan                Tokyo             289 ms    15%    ✔
+```
+
+Load is color-coded: 🟢 0–40% · 🟡 41–70% · 🔴 71%+
+
+---
+
+#### `nodex version`
+
+```bash
+nodex version
+```
+
+```
+  ╔══════════════════════════════════════════════════════╗
+  ║                                                      ║
+  ║   ███╗   ██╗ ██████╗ ██████╗ ███████╗██╗  ██╗       ║
+  ║   ████╗  ██║██╔═══██╗██╔══██╗██╔════╝╚██╗██╔╝       ║
+  ║   ██╔██╗ ██║██║   ██║██║  ██║█████╗   ╚███╔╝        ║
+  ║   ██║╚██╗██║██║   ██║██║  ██║██╔══╝   ██╔██╗        ║
+  ║   ██║ ╚████║╚██████╔╝██████╔╝███████╗██╔╝ ██╗       ║
+  ║   ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝       ║
+  ║                   ·  V  P  N  ·                      ║
+  ║                                                      ║
+  ╠══════════════════════════════════════════════════════╣
+  ║    Powered by AeonCoreX  ·  Tor-based Privacy VPN   ║
+  ║    v0.1.0  ·  x86_64-unknown-linux-gnu  ·  2026-04-26 ║
+  ║                                                      ║
+  ╚══════════════════════════════════════════════════════╝
+
+  CLI Version :  0.1.0
+  Build target:  x86_64-unknown-linux-gnu
+  Build date  :  2026-04-26
+  Description :  NodeX VPN — Tor-based privacy VPN by AeonCoreX
+  Vendor      :  AeonCoreX
+  License     :  MIT
+
+  Releases    :  https://github.com/AeonCoreX/NodeX-VPN/releases
+```
+
+---
+
+#### `nodex logs`
+
+```bash
+nodex logs              # Last 50 lines
+nodex logs --lines 100  # Last 100 lines
+```
+
+---
+
+### Color & NO_COLOR
+
+The CLI auto-detects terminal color support:
+- ANSI color on when stdout is a real TTY
+- Automatically disabled when piping (`nodex status | grep Exit`)
+- Disabled when `NO_COLOR=1` is set ([no-color.org](https://no-color.org))
+- `--quiet` flag suppresses the banner globally
+
+---
+
+## 🚀 Release System
+
+NodeX VPN uses **semantic versioning** with automated GitHub Releases.
+
+### Creating a Release
+
+```bash
+# 1. Update version in Cargo.toml
+vim rust-core/Cargo.toml   # version = "0.2.0"
+
+# 2. Add release notes to RELEASES.md
+vim RELEASES.md
+
+# 3. Commit, tag, push
+git add -A && git commit -m "chore: release v0.2.0"
+git tag v0.2.0
+git push origin main --tags
+```
+
+GitHub Actions automatically:
+1. Validates tag matches `Cargo.toml` version
+2. Builds CLI for **7 platform targets** in parallel
+3. Packages each as `.tar.gz` (Linux/macOS/FreeBSD) or `.zip` (Windows)
+4. Generates `SHA256SUMS.txt`
+5. Extracts release notes from `RELEASES.md`
+6. Publishes GitHub Release with all artifacts
+
+### Release Artifacts
+
+| File | Platform |
+|------|----------|
+| `nodex-linux-x86_64-vX.Y.Z.tar.gz` | Linux x86_64 (desktop + server + Termux PC) |
+| `nodex-linux-aarch64-vX.Y.Z.tar.gz` | Linux ARM64 (Raspberry Pi, ARM servers) |
+| `nodex-macos-arm64-vX.Y.Z.tar.gz` | macOS Apple Silicon |
+| `nodex-macos-x86_64-vX.Y.Z.tar.gz` | macOS Intel |
+| `nodex-windows-x86_64-vX.Y.Z.zip` | Windows x64 |
+| `nodex-windows-arm64-vX.Y.Z.zip` | Windows ARM64 (Surface Pro X, etc.) |
+| `nodex-freebsd-x86_64-vX.Y.Z.tar.gz` | FreeBSD x86_64 (pfSense / OPNsense) |
+| `SHA256SUMS.txt` | Checksums for all artifacts |
+
+### Versioning Policy
+
+| Increment | When |
+|-----------|------|
+| `MAJOR` | Breaking API or protocol change |
+| `MINOR` | New feature, new platform, new CLI subcommand |
+| `PATCH` | Bug fix, dependency update, CI fix |
+
+### Pre-releases
+
+```bash
+git tag v1.0.0-beta.1
+git push origin v1.0.0-beta.1
+# GitHub marks this as pre-release automatically
+```
+
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -330,6 +599,12 @@ NodeX-VPN/
 │   │       ├── linux.rs             # TUN + iptables (Linux desktop + router)
 │   │       ├── macos.rs             # utun + pfctl
 │   │       └── windows.rs           # Wintun driver
+│   ├── src/
+│   │   ├── bin/
+│   │   │   └── nodex.rs             # CLI binary (nodex connect / status / nodes / logs)
+│   │   └── ...
+│   ├── build.rs                     # UniFFI scaffolding + BUILD_TARGET/BUILD_DATE injection
+│   ├── Cross.toml                   # FreeBSD sysroot pre-build (libgeom fix)
 │   └── Cargo.toml
 │
 ├── 📱 shared/                       # Kotlin Multiplatform

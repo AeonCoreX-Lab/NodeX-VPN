@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.nodex.vpn.androidtv">
+    package="com.nodex.vpn.android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -16,7 +16,7 @@
         android:required="false" />
 
     <application
-        android:name=".TvApplication"
+        android:name=".tv.TvApplication"
         android:label="NodeX VPN"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
@@ -26,7 +26,7 @@
 
         <!-- ── TV Main Activity ──────────────────────────────────────────── -->
         <activity
-            android:name=".TvMainActivity"
+            android:name=".tv.TvMainActivity"
             android:exported="true"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|screenLayout|screenSize">

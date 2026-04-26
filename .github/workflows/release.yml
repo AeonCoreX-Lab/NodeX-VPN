@@ -1,0 +1,286 @@
+# .github/workflows/release.yml
+#
+# NodeX VPN — Automated Release Pipeline
+# Powered by AeonCoreX
+#
+# Triggers on: git push of a version tag  →  v0.1.0 / v1.2.3 / v1.0.0-beta.1
+#
+# What it does:
+#   1. Validates the tag matches the version in Cargo.toml
+#   2. Builds the `nodex` CLI binary for every desktop platform in parallel
+#   3. Creates a signed GitHub Release with:
+#        - One binary artifact per platform (zipped)
+#        - SHA-256 checksums file
+#        - Auto-generated changelog from RELEASES.md
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"   # pre-release: v1.0.0-beta.1
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+# ── Platform matrix ───────────────────────────────────────────────────────────
+
+jobs:
+
+  # ── Validate tag vs Cargo.toml version ───────────────────────────────────────
+  validate:
+    name: Validate version tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Cargo.toml version
+        id: ver
+        run: |
+          CARGO_VER=$(grep '^version' rust-core/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+          TAG_VER="${GITHUB_REF_NAME#v}"
+          echo "Cargo.toml: $CARGO_VER  |  Tag: $TAG_VER"
+          if [ "$CARGO_VER" != "$TAG_VER" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $CARGO_VER"
+            exit 1
+          fi
+          echo "version=$CARGO_VER" >> "$GITHUB_OUTPUT"
+
+  # ── Build CLI binaries ────────────────────────────────────────────────────────
+  build-cli:
+    name: Build CLI — ${{ matrix.label }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Linux ──────────────────────────────────────────────────────────
+          - label:      linux-x86_64
+            os:         ubuntu-22.04
+            target:     x86_64-unknown-linux-gnu
+            use_cross:  false
+            artifact:   nodex-linux-x86_64
+            archive:    tar.gz
+
+          - label:      linux-aarch64
+            os:         ubuntu-22.04
+            target:     aarch64-unknown-linux-gnu
+            use_cross:  true
+            artifact:   nodex-linux-aarch64
+            archive:    tar.gz
+
+          # ── macOS ──────────────────────────────────────────────────────────
+          - label:      macos-arm64
+            os:         macos-14          # Apple Silicon runner
+            target:     aarch64-apple-darwin
+            use_cross:  false
+            artifact:   nodex-macos-arm64
+            archive:    tar.gz
+
+          - label:      macos-x86_64
+            os:         macos-13          # Intel runner
+            target:     x86_64-apple-darwin
+            use_cross:  false
+            artifact:   nodex-macos-x86_64
+            archive:    tar.gz
+
+          # ── Windows ────────────────────────────────────────────────────────
+          - label:      windows-x86_64
+            os:         windows-latest
+            target:     x86_64-pc-windows-msvc
+            use_cross:  false
+            artifact:   nodex-windows-x86_64
+            archive:    zip
+
+          - label:      windows-arm64
+            os:         windows-latest
+            target:     aarch64-pc-windows-msvc
+            use_cross:  false
+            artifact:   nodex-windows-arm64
+            archive:    zip
+
+          # ── FreeBSD (router / pfSense / OPNsense) ─────────────────────────
+          - label:      freebsd-x86_64
+            os:         ubuntu-22.04
+            target:     x86_64-unknown-freebsd
+            use_cross:  true
+            artifact:   nodex-freebsd-x86_64
+            archive:    tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: release-${{ matrix.target }}-${{ hashFiles('rust-core/Cargo.lock') }}
+          restore-keys: release-${{ matrix.target }}-
+
+      # ── cross (for cross-compiled targets) ────────────────────────────────
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --locked
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Build CLI binary (native)
+        if: "!matrix.use_cross"
+        working-directory: rust-core
+        env:
+          SOURCE_DATE_EPOCH: "0"   # reproducible build date
+        run: |
+          cargo build --release --features cli --bin nodex --target ${{ matrix.target }}
+
+      - name: Build CLI binary (cross)
+        if: matrix.use_cross
+        working-directory: rust-core
+        env:
+          SOURCE_DATE_EPOCH: "0"
+        run: |
+          cross build --release --features cli --bin nodex --target ${{ matrix.target }}
+
+      # ── Package ────────────────────────────────────────────────────────────
+      - name: Package artifact (tar.gz — Linux / macOS / FreeBSD)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          BIN=rust-core/target/${{ matrix.target }}/release/nodex
+          OUT=${{ matrix.artifact }}-v${{ needs.validate.outputs.version }}
+          mkdir -p dist/$OUT
+          cp $BIN dist/$OUT/nodex
+          cp RELEASES.md dist/$OUT/RELEASES.md
+          cp LICENSE       dist/$OUT/LICENSE
+          cd dist
+          tar -czf ${OUT}.tar.gz $OUT
+          echo "ASSET=dist/${OUT}.tar.gz" >> $GITHUB_ENV
+
+      - name: Package artifact (zip — Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $BIN  = "rust-core/target/${{ matrix.target }}/release/nodex.exe"
+          $OUT  = "${{ matrix.artifact }}-v${{ needs.validate.outputs.version }}"
+          New-Item -ItemType Directory -Path "dist/$OUT" | Out-Null
+          Copy-Item $BIN           "dist/$OUT/nodex.exe"
+          Copy-Item RELEASES.md    "dist/$OUT/RELEASES.md"
+          Copy-Item LICENSE        "dist/$OUT/LICENSE"
+          Compress-Archive -Path "dist/$OUT" -DestinationPath "dist/${OUT}.zip"
+          echo "ASSET=dist/${OUT}.zip" | Out-File -Append $env:GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ env.ASSET }}
+          retention-days: 1
+
+  # ── Create GitHub Release ─────────────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: [validate, build-cli]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      # Flatten nested dirs from upload-artifact
+      - name: Flatten artifact directories
+        run: |
+          find dist/ -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} dist/ \;
+          find dist/ -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+          ls -lh dist/
+
+      - name: Generate SHA-256 checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip 2>/dev/null | tee SHA256SUMS.txt || true
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION=v${{ needs.validate.outputs.version }}
+          # Pull the section between the version header and the next ## header
+          NOTES=$(awk "/^## \[${{ needs.validate.outputs.version }}\]/{flag=1; next} /^## \[/{flag=0} flag" RELEASES.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="See RELEASES.md for full changelog."
+          fi
+          # GitHub Actions multiline output
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name:   ${{ github.ref_name }}
+          name:       "NodeX VPN ${{ github.ref_name }}"
+          draft:      false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## NodeX VPN ${{ github.ref_name }}
+            **Powered by AeonCoreX** · Tor-based Privacy VPN
+
+            ${{ steps.changelog.outputs.notes }}
+
+            ---
+
+            ### Installation
+
+            **Linux / Termux (Android)**
+            ```bash
+            tar -xzf nodex-linux-x86_64-${{ github.ref_name }}.tar.gz
+            sudo mv nodex-linux-x86_64-${{ github.ref_name }}/nodex /usr/local/bin/
+            nodex version
+            ```
+
+            **macOS**
+            ```bash
+            tar -xzf nodex-macos-arm64-${{ github.ref_name }}.tar.gz
+            sudo mv nodex-macos-arm64-${{ github.ref_name }}/nodex /usr/local/bin/
+            nodex version
+            ```
+
+            **Windows** — extract the `.zip`, add the folder to `PATH`, then:
+            ```
+            nodex.exe version
+            ```
+
+            **FreeBSD / pfSense / OPNsense**
+            ```bash
+            tar -xzf nodex-freebsd-x86_64-${{ github.ref_name }}.tar.gz
+            sudo mv nodex-freebsd-x86_64-${{ github.ref_name }}/nodex /usr/local/bin/
+            nodex version
+            ```
+
+            ---
+
+            ### SHA-256 Checksums
+            See `SHA256SUMS.txt` attached below.
+
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS.txt

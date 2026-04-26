@@ -17,10 +17,10 @@ kotlin {
 }
 
 android {
-    namespace = "com.nodex.vpn.androidtv"
+    namespace = "com.nodex.vpn.android"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.nodex.vpn.androidtv"
+        applicationId = "com.nodex.vpn.android"
         minSdk        = 26       // Android TV minimum (Leanback LGTV/Bravia support)
         targetSdk     = 35
         versionCode   = 1

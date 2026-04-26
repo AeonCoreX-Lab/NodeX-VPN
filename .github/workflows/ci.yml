@@ -93,6 +93,8 @@ jobs:
         run: |
           # cross handles the FreeBSD sysroot + linker automatically
           cross build --release --target x86_64-unknown-freebsd
+          # Also build the CLI binary for router deployments
+          cross build --release --features cli --bin nodex --target x86_64-unknown-freebsd
 
       - name: Build (Android)
         if:   matrix.group == 'android'
@@ -120,6 +122,11 @@ jobs:
         if:   matrix.group != 'android' && matrix.group != 'freebsd'
         working-directory: rust-core
         run:  cargo build --release --target ${{ matrix.target }}
+
+      - name: Build CLI (desktop targets)
+        if:   matrix.group == 'linux' || matrix.group == 'macos' || matrix.group == 'windows'
+        working-directory: rust-core
+        run:  cargo build --release --features cli --bin nodex --target ${{ matrix.target }}
 
       - name: UniFFI tvOS Swift bindings
         if:   matrix.target == 'aarch64-apple-tvos'
