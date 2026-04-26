@@ -1,22 +1,3 @@
----
-
-## 🌐 NodeX VPN — Production Ready, Testing in Progress 🚀  
-
-![NodeX VPN Banner](https://img.shields.io/badge/NodeX%20VPN-Serverless%20Privacy%20Ecosystem-blue?style=for-the-badge&logo=tor)
-
-**NodeX VPN** is the world’s first **serverless, Tor‑based decentralized VPN ecosystem** supporting **11+ platforms plus Android TV, Apple TV, and Router firmware**.  
-
-🔒 Zero Logs • ⚡ Rust Core • 📱 Multi‑Platform • 🌍 obfs4 Bridges  
-
-👉 While the official release is not yet live (testing is ongoing), you can already show your support by giving the project a **Star on GitHub**.  
-Your feedback and participation will make the community stronger.  
-
-🔗 [⭐ Star NodeX VPN on GitHub](https://github.com/AeonCoreX-Lab/NodeX-VPN)
-
----
-
-
-
 <div align="center">
 
 <img src="desktopApp/resources/macos/AppIcon.iconset/icon_512x512.png" width="120" height="120" alt="NodeX VPN Logo" />
