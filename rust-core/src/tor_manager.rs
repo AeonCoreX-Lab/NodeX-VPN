@@ -16,6 +16,7 @@ use arti_client::{
     BootstrapBehavior,
     config::TorClientConfig,
     config::CfgPath,
+    config::BoolOrAuto,
     StreamPrefs,
     IsolationToken,
 };
@@ -172,11 +173,10 @@ impl TorEngine {
                 }
             }
             // Enable bridges explicitly so arti uses them.
-            // arti-client 0.41: BridgesConfigBuilder uses builder-style
-            // .enabled(true) — not .set_enabled(true) (which does not exist).
-            // The compiler suggests: "there is a method `enabled` with a
-            // similar name" (E0599). Fix: drop the `set_` prefix.
-            b.bridges().enabled(true);
+            // arti-client 0.41: BridgesConfigBuilder.enabled() now takes
+            // BoolOrAuto, not bool. Use BoolOrAuto::Explicit(true) to
+            // explicitly enable bridge usage (as the compiler suggests).
+            b.bridges().enabled(BoolOrAuto::Explicit(true));
         }
 
         b.build().context("Build TorClientConfig")
