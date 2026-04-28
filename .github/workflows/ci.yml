@@ -622,22 +622,3 @@ jobs:
           path: dist/router/*.tar.gz
           retention-days: 30
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Job 7: GitHub Release  (only on version tags)
-# ─────────────────────────────────────────────────────────────────────────────
-  release:
-    name: "GitHub Release"
-    needs: [android, android-tv, ios, tvos, desktop-macos, desktop-linux, desktop-windows, router-package, router-package-freebsd]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/download-artifact@v4
-        with: { path: release-artifacts/ }
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files:                  release-artifacts/**/*
-          generate_release_notes: true
-          prerelease:             ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

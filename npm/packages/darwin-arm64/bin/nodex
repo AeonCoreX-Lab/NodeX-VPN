@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+// This file is a placeholder.
+// The actual binary is placed here by the GitHub Actions release workflow.
+// If you see this file, the binary was not correctly installed.
+console.error("NodeX VPN binary placeholder — this should not be executed.");
+process.exit(1);
