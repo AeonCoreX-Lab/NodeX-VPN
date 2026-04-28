@@ -13,6 +13,11 @@ plugins {
     id("org.jetbrains.kotlin.native.cocoapods")
 }
 
+// ── BuildConfig for Desktop (Google OAuth2 + Firebase credentials) ────────────
+val googleClientId     = System.getenv("NODEX_DESKTOP_GOOGLE_CLIENT_ID")     ?: project.findProperty("nodex.google.client.id")?.toString()     ?: "PLACEHOLDER"
+val googleClientSecret = System.getenv("NODEX_DESKTOP_GOOGLE_CLIENT_SECRET") ?: project.findProperty("nodex.google.client.secret")?.toString() ?: "PLACEHOLDER"
+val firebaseApiKey     = System.getenv("FIREBASE_WEB_API_KEY")               ?: project.findProperty("nodex.firebase.api.key")?.toString()      ?: "PLACEHOLDER"
+
 kotlin {
     // ── Android ───────────────────────────────────────────────────────────────
     androidTarget {
@@ -33,7 +38,34 @@ kotlin {
     }
 
     // ── Source Sets ───────────────────────────────────────────────────────────
-    sourceSets {
+    // Generate BuildConfig.kt for desktop
+val generateBuildConfig by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/buildconfig/desktopMain/kotlin")
+    outputs.dir(outputDir)
+    doLast {
+        val dir = outputDir.get().asFile
+        dir.mkdirs()
+        File(dir, "BuildConfig.kt").writeText("""
+package com.nodex.vpn.auth
+
+internal object BuildConfig {
+    const val GOOGLE_CLIENT_ID:     String = "$googleClientId"
+    const val GOOGLE_CLIENT_SECRET: String = "$googleClientSecret"
+    const val FIREBASE_API_KEY:     String = "$firebaseApiKey"
+}
+""".trimIndent())
+    }
+}
+
+kotlin.sourceSets.getByName("desktopMain").kotlin.srcDir(
+    layout.buildDirectory.dir("generated/buildconfig/desktopMain/kotlin")
+)
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    dependsOn(generateBuildConfig)
+}
+
+sourceSets {
 
         // ── Common ────────────────────────────────────────────────────────────
         val commonMain by getting {

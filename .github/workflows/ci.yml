@@ -122,6 +122,10 @@ jobs:
         if:   matrix.group != 'android' && matrix.group != 'freebsd'
         working-directory: rust-core
         run:  cargo build --release --target ${{ matrix.target }}
+        env:
+          NODEX_DESKTOP_GOOGLE_CLIENT_ID:     ${{ secrets.DESKTOP_GOOGLE_CLIENT_ID }}
+          NODEX_DESKTOP_GOOGLE_CLIENT_SECRET: ${{ secrets.DESKTOP_GOOGLE_CLIENT_SECRET }}
+          FIREBASE_WEB_API_KEY:               ${{ secrets.FIREBASE_WEB_API_KEY }}
 
       - name: Build CLI (desktop targets)
         if:   matrix.group == 'linux' || matrix.group == 'macos' || matrix.group == 'windows'

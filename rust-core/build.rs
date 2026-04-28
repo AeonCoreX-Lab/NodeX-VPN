@@ -22,6 +22,18 @@ fn main() {
 
     // Re-run if these env vars change
     println!("cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH");
+
+    // ── Google OAuth2 credentials (injected from GitHub Secrets) ─────────────
+    // In CI:  set via secrets.GOOGLE_CLIENT_ID_CLI / secrets.GOOGLE_CLIENT_SECRET_CLI
+    // Locally: set NODEX_GOOGLE_CLIENT_ID / NODEX_GOOGLE_CLIENT_SECRET env vars
+    let client_id = std::env::var("NODEX_GOOGLE_CLIENT_ID")
+        .unwrap_or_else(|_| "PLACEHOLDER".into());
+    let client_secret = std::env::var("NODEX_GOOGLE_CLIENT_SECRET")
+        .unwrap_or_else(|_| "PLACEHOLDER".into());
+    println!("cargo:rustc-env=NODEX_GOOGLE_CLIENT_ID={client_id}");
+    println!("cargo:rustc-env=NODEX_GOOGLE_CLIENT_SECRET={client_secret}");
+    println!("cargo:rerun-if-env-changed=NODEX_GOOGLE_CLIENT_ID");
+    println!("cargo:rerun-if-env-changed=NODEX_GOOGLE_CLIENT_SECRET");
 }
 
 fn build_date() -> String {

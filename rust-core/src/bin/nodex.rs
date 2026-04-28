@@ -9,6 +9,8 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use is_terminal::IsTerminal;
+#[cfg(feature = "cli")]
+use nodex_vpn_core::auth;
 use nodex_vpn_core::{
     start_nodex, stop_nodex, is_running,
     get_bootstrap_status, get_real_time_stats,
@@ -104,6 +106,15 @@ enum Commands {
 
     /// Show version and build information
     Version,
+
+    /// Log in with your Google account
+    Login,
+
+    /// Log out and remove saved credentials
+    Logout,
+
+    /// Show currently logged-in account
+    Whoami,
 }
 
 // ── Color support ─────────────────────────────────────────────────────────────
@@ -206,6 +217,9 @@ fn main() {
         Commands::Status                       => { print_banner(quiet); cmd_status(); }
         Commands::Nodes { country, bridges }   => { print_banner(quiet); cmd_nodes(country, bridges); }
         Commands::Logs  { lines }              => cmd_logs(lines),
+        Commands::Login                        => { print_banner(quiet); cmd_login(quiet); }
+        Commands::Logout                       => cmd_logout(),
+        Commands::Whoami                       => cmd_whoami(),
     }
 }
 
