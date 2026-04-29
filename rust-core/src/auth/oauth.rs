@@ -291,8 +291,8 @@ pub fn exchange_code(
     Ok(StoredToken {
         access_token:  resp.access_token,
         refresh_token,
-        email:         user.email,
-        name:          user.name.unwrap_or_else(|| "Unknown".into()),
+        email:         Some(user.email),
+        name:          user.name,
         expires_at,
     })
 }
@@ -346,8 +346,8 @@ pub fn refresh_token(
     Ok(StoredToken {
         access_token:  resp.access_token,
         refresh_token: new_refresh,
-        email:         user.email,
-        name:          user.name.unwrap_or_else(|| "Unknown".into()),
+        email:         Some(user.email),
+        name:          user.name,
         expires_at,
     })
 }

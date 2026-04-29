@@ -9,9 +9,8 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use is_terminal::IsTerminal;
-#[cfg(feature = "cli")]
-use nodex_vpn_core::auth;
-use nodex_vpn_core::{
+use crate::auth;
+use crate::{
     start_nodex, stop_nodex, is_running,
     get_bootstrap_status, get_real_time_stats,
     get_available_nodes, set_exit_node,
@@ -518,4 +517,110 @@ fn fmt_rate(bps: u64) -> String { format!("{}/s", fmt_bytes(bps)) }
 fn fmt_duration(secs: u64) -> String {
     let (h, m, s) = (secs / 3600, (secs % 3600) / 60, secs % 60);
     if h > 0 { format!("{h}h {m:02}m {s:02}s") } else { format!("{m:02}m {s:02}s") }
+}
+
+// ── login ─────────────────────────────────────────────────────────────────────
+
+fn cmd_login(quiet: bool) {
+    let c = colors_enabled();
+
+    if let Some(user) = auth::current_user() {
+        if c {
+            println!("  {} Already logged in as {}",
+                "✔".green().bold(),
+                user.email.as_deref().unwrap_or("").cyan().bold());
+        } else {
+            println!("  Already logged in as {}", user.email.as_deref().unwrap_or(""));
+        }
+        println!();
+        if c { println!("  {} Run {} to switch accounts.", "›".bright_black(), "nodex logout".yellow()); }
+        else  { println!("  Run 'nodex logout' to switch accounts."); }
+        println!();
+        return;
+    }
+
+    if !quiet {
+        if c {
+            println!("  {} Opening browser for Google Sign-In…", "›".bright_black());
+            println!("  {} Waiting on localhost:9005…", "›".bright_black());
+        } else {
+            println!("  Opening browser for Google Sign-In...");
+        }
+        println!();
+    }
+
+    match auth::login() {
+        Ok(user) => {
+            println!();
+            if c {
+                println!("  {} Logged in as {}",
+                    "✔".green().bold(),
+                    user.email.as_deref().unwrap_or("").cyan().bold());
+                if let Some(name) = &user.name {
+                    println!("  {}    {}", "Name:".bright_black(), name);
+                }
+            } else {
+                println!("  [OK] Logged in as {}", user.email.as_deref().unwrap_or(""));
+            }
+            println!();
+        }
+        Err(e) => {
+            println!();
+            if c { eprintln!("  {} Login failed: {e}", "✘".red().bold()); }
+            else  { eprintln!("  [ERROR] Login failed: {e}"); }
+            std::process::exit(1);
+        }
+    }
+}
+
+// ── logout ────────────────────────────────────────────────────────────────────
+
+fn cmd_logout() {
+    let c = colors_enabled();
+    match auth::logout() {
+        Ok(_)  => {
+            if c { println!("  {} Logged out successfully.", "✔".green().bold()); }
+            else  { println!("  [OK] Logged out."); }
+        }
+        Err(e) => {
+            if c { eprintln!("  {} Logout failed: {e}", "✘".red().bold()); }
+            else  { eprintln!("  [ERROR] Logout failed: {e}"); }
+            std::process::exit(1);
+        }
+    }
+}
+
+// ── whoami ────────────────────────────────────────────────────────────────────
+
+fn cmd_whoami() {
+    let c = colors_enabled();
+    match auth::current_user() {
+        Some(user) => {
+            if c {
+                println!("  {}  {}",
+                    "Email:".bright_black(),
+                    user.email.as_deref().unwrap_or("").cyan().bold());
+                if let Some(name) = &user.name {
+                    println!("  {}   {}", "Name:".bright_black(), name);
+                }
+                if user.is_expired() {
+                    println!("  {} Token expired — will auto-refresh on next connect.", "⚠".yellow());
+                } else {
+                    println!("  {} Token valid", "✔".green());
+                }
+            } else {
+                println!("  Email: {}", user.email.as_deref().unwrap_or(""));
+                if let Some(name) = &user.name { println!("  Name:  {name}"); }
+            }
+        }
+        None => {
+            if c {
+                println!("  {} Not logged in.", "○".bright_black());
+                println!("  Run {} to authenticate.", "nodex login".cyan().bold());
+            } else {
+                println!("  Not logged in. Run: nodex login");
+            }
+        }
+    }
+    println!();
 }

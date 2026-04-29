@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NodeX VPN — Tor-based Privacy VPN by AeonCoreX</title>
+<meta name="description" content="NodeX VPN routes your traffic through the Tor network. Zero logs. No owned servers. 12 platforms. Free and open source by AeonCoreX.">
+<meta property="og:title" content="NodeX VPN — Privacy You Actually Own">
+<meta property="og:description" content="Tor-based VPN for Android, iOS, Desktop, Router & CLI. Zero logs. No servers. Free forever.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:        #040507;
+  --bg2:       #080b10;
+  --bg3:       #0c1018;
+  --surface:   #0f1520;
+  --border:    #1a2333;
+  --border2:   #243044;
+  --accent:    #00d4ff;
+  --accent2:   #0066ff;
+  --accent3:   #00ff9d;
+  --warn:      #ff6b35;
+  --text:      #e8edf5;
+  --muted:     #6b7d94;
+  --muted2:    #3d4f63;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui:   'Space Mono', monospace;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── Noise overlay ─────────────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ── Grid background ───────────────────────────────────────────────────────── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Nav ───────────────────────────────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 64px;
+  background: rgba(4,5,7,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.nav-logo-text {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.nav-logo-text span { color: var(--accent); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--accent); }
+
+.nav-cta {
+  padding: 8px 20px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent) !important;
+  border-radius: 4px;
+  transition: background 0.2s !important;
+}
+
+.nav-cta:hover { background: rgba(0,212,255,0.1) !important; }
+
+/* ── Sections ──────────────────────────────────────────────────────────────── */
+section {
+  position: relative;
+  z-index: 1;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 64px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(0,102,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  padding: 80px 0;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 100px;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent3);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+.hero-title {
+  font-family: var(--font-head);
+  font-size: clamp(42px, 5vw, 68px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -2px;
+  margin-bottom: 24px;
+}
+
+.hero-title .accent { color: var(--accent); }
+.hero-title .accent2 { color: var(--accent3); }
+
+.hero-subtitle {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 40px;
+  max-width: 440px;
+  font-family: var(--font-ui);
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  padding: 14px 28px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary:hover {
+  background: #00b8d9;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,212,255,0.25);
+}
+
+.btn-secondary {
+  padding: 14px 28px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Hero terminal */
+.hero-terminal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.terminal-body {
+  padding: 24px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 2;
+}
+
+.t-prompt { color: var(--accent3); }
+.t-cmd    { color: var(--text); }
+.t-out    { color: var(--muted); }
+.t-ok     { color: var(--accent3); }
+.t-info   { color: var(--accent); }
+.t-bar    { color: var(--accent); }
+.t-up     { color: var(--accent3); }
+.t-dn     { color: var(--accent); }
+.t-lat    { color: #f5c842; }
+
+/* ── Stats bar ─────────────────────────────────────────────────────────────── */
+#stats-bar {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 32px 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.stat-item {
+  padding: 0 40px;
+  border-right: 1px solid var(--border);
+  text-align: center;
+}
+
+.stat-item:last-child { border-right: none; }
+
+.stat-num {
+  font-family: var(--font-head);
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+}
+
+/* ── How it works ──────────────────────────────────────────────────────────── */
+#how {
+  padding: 120px 0;
+}
+
+.section-tag {
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+}
+
+.section-title {
+  font-family: var(--font-head);
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 500px;
+  line-height: 1.8;
+  margin-bottom: 64px;
+}
+
+.circuit {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 60px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.circuit-node {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.circuit-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  position: relative;
+}
+
+.circuit-icon.highlight {
+  border-color: var(--accent);
+  background: rgba(0,212,255,0.08);
+  box-shadow: 0 0 20px rgba(0,212,255,0.15);
+}
+
+.circuit-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.circuit-arrow {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border2), var(--accent), var(--border2));
+  min-width: 40px;
+  position: relative;
+}
+
+.circuit-arrow::after {
+  content: '▶';
+  position: absolute;
+  right: -6px;
+  top: -8px;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.circuit-arrow.encrypted {
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  height: 2px;
+  box-shadow: 0 0 8px rgba(0,212,255,0.4);
+}
+
+.how-points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.how-point {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  transition: border-color 0.2s;
+}
+
+.how-point:hover { border-color: var(--border2); }
+
+.how-num {
+  font-family: var(--font-head);
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--border2);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.how-point h3 {
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.how-point p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+/* ── Features ──────────────────────────────────────────────────────────────── */
+#features {
+  padding: 120px 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.feature-card {
+  background: var(--bg2);
+  padding: 36px 32px;
+  transition: background 0.2s;
+}
+
+.feature-card:hover { background: var(--surface); }
+
+.feature-icon {
+  font-size: 28px;
+  margin-bottom: 18px;
+  display: block;
+}
+
+.feature-card h3 {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.feature-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.feature-tag {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 3px 10px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+/* ── Platforms ─────────────────────────────────────────────────────────────── */
+#platforms {
+  padding: 120px 0;
+}
+
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 64px;
+}
+
+.platform-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 24px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.platform-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,212,255,0.08);
+}
+
+.platform-icon { font-size: 32px; margin-bottom: 14px; }
+
+.platform-card h4 {
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.platform-card p {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-family: var(--font-mono);
+}
+
+/* ── CLI docs ──────────────────────────────────────────────────────────────── */
+#cli {
+  padding: 120px 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.cli-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 48px;
+  margin-top: 64px;
+}
+
+.cli-sidebar {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
+.cli-nav { list-style: none; }
+
+.cli-nav li { margin-bottom: 2px; }
+
+.cli-nav a {
+  display: block;
+  padding: 8px 14px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+
+.cli-nav a:hover, .cli-nav a.active {
+  color: var(--accent);
+  background: rgba(0,212,255,0.06);
+  border-left-color: var(--accent);
+}
+
+.cli-nav .group-label {
+  font-size: 10px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 16px 14px 6px;
+  font-family: var(--font-mono);
+}
+
+.cli-content { min-width: 0; }
+
+.cmd-block {
+  margin-bottom: 48px;
+  scroll-margin-top: 80px;
+}
+
+.cmd-block h3 {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cmd-block h3::before {
+  content: '$';
+  color: var(--muted2);
+  font-size: 14px;
+}
+
+.cmd-block > p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+}
+
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 2;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.code-comment { color: var(--muted2); }
+.code-flag    { color: #f5c842; }
+.code-value   { color: var(--accent3); }
+.code-cmd     { color: var(--text); }
+
+.options-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 16px;
+}
+
+.options-table th {
+  text-align: left;
+  padding: 10px 14px;
+  color: var(--muted);
+  font-weight: 400;
+  font-family: var(--font-mono);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.options-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  vertical-align: top;
+}
+
+.options-table tr:last-child td { border-bottom: none; }
+.options-table td:first-child { color: var(--accent3); }
+.options-table td:nth-child(2) { color: var(--muted); font-size: 11px; }
+
+/* ── Why section ───────────────────────────────────────────────────────────── */
+#why {
+  padding: 120px 0;
+}
+
+.why-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 32px;
+}
+
+.comparison-table th {
+  padding: 12px 16px;
+  text-align: center;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.comparison-table th:first-child { text-align: left; }
+
+.comparison-table td {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.comparison-table td:first-child { text-align: left; color: var(--muted); }
+.comparison-table .nodex-col { color: var(--accent3); font-weight: 700; }
+.comparison-table .check { color: var(--accent3); }
+.comparison-table .cross { color: var(--muted2); }
+.comparison-table .partial { color: #f5c842; }
+
+.why-points { display: flex; flex-direction: column; gap: 24px; }
+
+.why-point {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.why-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.why-point h4 {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.why-point p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+/* ── AeonCoreX section ─────────────────────────────────────────────────────── */
+#aeoncorex {
+  padding: 120px 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 60px;
+}
+
+.brand-logo-large {
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.brand-name-large {
+  font-family: var(--font-head);
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 24px;
+}
+
+.brand-name-large span { color: var(--accent); }
+
+.brand-desc {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  margin-bottom: 32px;
+}
+
+.product-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.product-pill {
+  padding: 8px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 100px;
+  font-size: 12px;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.product-pill.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,212,255,0.06);
+}
+
+.brand-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.brand-stat-item { display: flex; flex-direction: column; gap: 4px; }
+
+.brand-stat-num {
+  font-family: var(--font-head);
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -1px;
+}
+
+.brand-stat-label { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ── Legal ─────────────────────────────────────────────────────────────────── */
+#privacy, #terms {
+  padding: 120px 0;
+}
+
+#terms { background: var(--bg2); border-top: 1px solid var(--border); }
+
+.legal-content {
+  max-width: 720px;
+}
+
+.legal-content h3 {
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  margin: 36px 0 12px;
+  color: var(--text);
+}
+
+.legal-content h3:first-child { margin-top: 40px; }
+
+.legal-content p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  margin-bottom: 14px;
+}
+
+.legal-content ul {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0 0 14px 20px;
+}
+
+.legal-content ul li { margin-bottom: 6px; }
+
+.legal-content a { color: var(--accent); text-decoration: none; }
+
+.legal-highlight {
+  background: rgba(0,212,255,0.05);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 16px 20px;
+  margin: 24px 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* ── Install CTA ───────────────────────────────────────────────────────────── */
+#install {
+  padding: 120px 0;
+  text-align: center;
+}
+
+.install-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 800px;
+  margin: 48px auto;
+}
+
+.install-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 24px;
+  text-align: left;
+}
+
+.install-card h4 {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.install-card .code-block {
+  font-size: 11.5px;
+  padding: 14px 16px;
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 60px 0 40px;
+  background: var(--bg);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 60px;
+  margin-bottom: 60px;
+}
+
+.footer-brand p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 16px;
+  max-width: 280px;
+}
+
+.footer-col h5 {
+  font-family: var(--font-head);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.footer-col ul { list-style: none; }
+.footer-col li { margin-bottom: 10px; }
+
+.footer-col a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.footer-col a:hover { color: var(--accent); }
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.footer-bottom a { color: var(--muted); text-decoration: none; }
+.footer-bottom a:hover { color: var(--accent); }
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  .container { padding: 0 20px; }
+
+  .hero-content { grid-template-columns: 1fr; gap: 40px; padding: 60px 0; }
+  .stats-grid   { grid-template-columns: repeat(2, 1fr); }
+  .stat-item    { padding: 20px; }
+  .how-points   { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .platform-grid { grid-template-columns: repeat(2, 1fr); }
+  .cli-layout   { grid-template-columns: 1fr; }
+  .cli-sidebar  { display: none; }
+  .why-grid     { grid-template-columns: 1fr; }
+  .brand-card   { grid-template-columns: 1fr; padding: 36px; gap: 40px; }
+  .install-grid { grid-template-columns: 1fr; }
+  .footer-grid  { grid-template-columns: 1fr 1fr; gap: 40px; }
+}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">N</div>
+    <span class="nav-logo-text">NodeX<span>VPN</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#platforms">Platforms</a></li>
+    <li><a href="#cli">CLI Docs</a></li>
+    <li><a href="#why">Why NodeX</a></li>
+    <li><a href="#aeoncorex">AeonCoreX</a></li>
+    <li><a href="https://github.com/AeonCoreX/NodeX-VPN" class="nav-cta">GitHub ↗</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="fade-in">
+        <div class="hero-badge">Open Source · Zero Logs · Tor-powered</div>
+        <h1 class="hero-title">
+          Privacy<br>
+          You<br>
+          <span class="accent">Actually</span><br>
+          <span class="accent2">Own.</span>
+        </h1>
+        <p class="hero-subtitle">
+          NodeX VPN routes every connection through the Tor network.
+          No servers owned by us. No logs. No subscriptions.
+          12 platforms. Built on Rust.
+        </p>
+        <div class="hero-buttons">
+          <a href="#install" class="btn-primary">Get NodeX VPN</a>
+          <a href="#how" class="btn-secondary">How it works →</a>
+        </div>
+      </div>
+
+      <div class="hero-terminal fade-in" style="animation-delay:0.2s">
+        <div class="terminal-header">
+          <div class="terminal-dot" style="background:#ff5f57"></div>
+          <div class="terminal-dot" style="background:#febc2e"></div>
+          <div class="terminal-dot" style="background:#28c840"></div>
+          <span class="terminal-title">nodex — terminal</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="t-prompt">~</span> <span class="t-cmd">nodex login</span></div>
+          <div><span class="t-ok">✔</span> <span class="t-out">Logged in as user@gmail.com</span></div>
+          <div>&nbsp;</div>
+          <div><span class="t-prompt">~</span> <span class="t-cmd">nodex connect <span style="color:#f5c842">--country DE</span></span></div>
+          <div><span class="t-info">›</span> <span class="t-out">Exit country:  Germany</span></div>
+          <div><span class="t-info">›</span> <span class="t-out">SOCKS5 proxy:  127.0.0.1:9050</span></div>
+          <div>&nbsp;</div>
+          <div><span class="t-bar">[██████████████████████████████]</span> <span class="t-ok">100%</span></div>
+          <div><span class="t-ok">✔</span> <span class="t-out">Connected via Tor network</span></div>
+          <div><span class="t-info">›</span> <span class="t-out">Press Ctrl+C to disconnect</span></div>
+          <div>&nbsp;</div>
+          <div style="font-size:11px; color:#3d4f63">↑ Upload &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓ Download &nbsp;&nbsp;&nbsp;Latency &nbsp;&nbsp;Uptime</div>
+          <div><span class="t-up">2.14 MB/s</span> &nbsp;&nbsp;&nbsp;<span class="t-dn">4.87 MB/s</span> &nbsp;&nbsp;<span class="t-lat">198 ms</span> &nbsp;&nbsp;<span class="t-out">03m 12s</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<section id="stats-bar">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item fade-in">
+        <div class="stat-num">12</div>
+        <div class="stat-label">Platforms Supported</div>
+      </div>
+      <div class="stat-item fade-in">
+        <div class="stat-num">0</div>
+        <div class="stat-label">Logs Collected</div>
+      </div>
+      <div class="stat-item fade-in">
+        <div class="stat-num">3</div>
+        <div class="stat-label">Tor Hops per Circuit</div>
+      </div>
+      <div class="stat-item fade-in">
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Free. Always.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="container">
+    <div class="section-tag fade-in">// How it works</div>
+    <h2 class="section-title fade-in">Three hops between you and the internet.</h2>
+    <p class="section-sub fade-in">NodeX wraps every TCP connection in three layers of encryption and routes it through three independent Tor relays. No single relay knows both who you are and what you're accessing.</p>
+
+    <div class="circuit fade-in">
+      <div class="circuit-node">
+        <div class="circuit-icon highlight">💻</div>
+        <div class="circuit-label">Your Device</div>
+      </div>
+      <div class="circuit-arrow encrypted"></div>
+      <div class="circuit-node">
+        <div class="circuit-icon">🛡️</div>
+        <div class="circuit-label">Guard Relay</div>
+      </div>
+      <div class="circuit-arrow encrypted"></div>
+      <div class="circuit-node">
+        <div class="circuit-icon">🔄</div>
+        <div class="circuit-label">Middle Relay</div>
+      </div>
+      <div class="circuit-arrow encrypted"></div>
+      <div class="circuit-node">
+        <div class="circuit-icon">🌐</div>
+        <div class="circuit-label">Exit Relay</div>
+      </div>
+      <div class="circuit-arrow"></div>
+      <div class="circuit-node">
+        <div class="circuit-icon highlight">🔒</div>
+        <div class="circuit-label">Destination</div>
+      </div>
+    </div>
+
+    <div class="how-points">
+      <div class="how-point fade-in">
+        <div class="how-num">01</div>
+        <h3>Guard Relay</h3>
+        <p>Knows your IP but not your destination. NodeX uses a trusted, stable guard for your long-term anonymity.</p>
+      </div>
+      <div class="how-point fade-in">
+        <div class="how-num">02</div>
+        <h3>Middle Relay</h3>
+        <p>Knows neither origin nor destination — just passes encrypted traffic forward. Prevents correlation attacks.</p>
+      </div>
+      <div class="how-point fade-in">
+        <div class="how-num">03</div>
+        <h3>Exit Relay</h3>
+        <p>Knows the destination but not your identity. You can choose the exit country for geo-specific access.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-tag fade-in">// Features</div>
+    <h2 class="section-title fade-in">Built different.</h2>
+    <p class="section-sub fade-in">Not a Tor proxy wrapper. A production-grade Tor client built from scratch in Rust using the Arti engine — the same engine the Tor Project is building as the future of Tor.</p>
+
+    <div class="features-grid fade-in">
+      <div class="feature-card">
+        <span class="feature-icon">🦀</span>
+        <h3>Rust + Arti Engine</h3>
+        <p>Built on <code>arti-client</code> — the Tor Project's own Rust implementation. Memory-safe, async, production-grade.</p>
+        <span class="feature-tag">arti 0.41</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🌉</span>
+        <h3>Bridge Support</h3>
+        <p>Full obfs4 bridge support for censored regions. Works in China, Iran, Russia, and other restrictive networks.</p>
+        <span class="feature-tag">obfs4 · pluggable transports</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔒</span>
+        <h3>Zero DNS Leaks</h3>
+        <p>All DNS queries routed through Tor circuits. Your ISP cannot see which domains you're resolving.</p>
+        <span class="feature-tag">DNS-over-Tor</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🌍</span>
+        <h3>Exit Country Selection</h3>
+        <p>Choose which country your traffic exits from using Tor's stream isolation. No need for our servers.</p>
+        <span class="feature-tag">Serverless</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔑</span>
+        <h3>Google Authentication</h3>
+        <p>Secure sign-in via Google OAuth2 PKCE flow. No passwords stored. Token secured in OS keychain.</p>
+        <span class="feature-tag">OAuth2 PKCE</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📡</span>
+        <h3>Router Protection</h3>
+        <p>Deploy on pfSense, OPNsense, OpenWrt, GL.iNet, Asus Merlin, or Synology NAS for whole-home protection.</p>
+        <span class="feature-tag">FreeBSD · Linux</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🖥️</span>
+        <h3>Professional CLI</h3>
+        <p>Full-featured command-line client with live stats, progress bars, color output, and NO_COLOR support.</p>
+        <span class="feature-tag">Linux · macOS · Windows · Termux</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📦</span>
+        <h3>npm Distribution</h3>
+        <p>Install globally with npm. Platform-specific binary auto-selected. Works with npx without global install.</p>
+        <span class="feature-tag">@aeoncorex/nodex-vpn</span>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔄</span>
+        <h3>Auto Releases</h3>
+        <p>One git tag triggers builds for all 12 platforms, npm publish, and GitHub Release with SHA256 checksums.</p>
+        <span class="feature-tag">GitHub Actions</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLATFORMS -->
+<section id="platforms">
+  <div class="container">
+    <div class="section-tag fade-in">// Platforms</div>
+    <h2 class="section-title fade-in">Runs everywhere you do.</h2>
+    <p class="section-sub fade-in">One Rust core, 12 deployment targets. The same engine powers your phone, desktop, router, and terminal.</p>
+
+    <div class="platform-grid">
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🤖</div>
+        <h4>Android</h4>
+        <p>arm64 · armeabi-v7a<br>x86_64 · x86</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">📺</div>
+        <h4>Android TV</h4>
+        <p>arm64 · x86_64<br>Full TV UI</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🍎</div>
+        <h4>iOS / iPadOS</h4>
+        <p>iPhone · iPad<br>arm64</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">📺</div>
+        <h4>tvOS</h4>
+        <p>Apple TV<br>arm64</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🍎</div>
+        <h4>macOS</h4>
+        <p>Apple Silicon<br>Intel x64</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🪟</div>
+        <h4>Windows</h4>
+        <p>x64 · ARM64<br>MSI installer</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🐧</div>
+        <h4>Linux</h4>
+        <p>x86_64 · aarch64<br>DEB · RPM</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">💻</div>
+        <h4>CLI / Termux</h4>
+        <p>All desktops<br>Android Termux</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🔧</div>
+        <h4>pfSense / OPNsense</h4>
+        <p>FreeBSD x86_64<br>Router package</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">📡</div>
+        <h4>OpenWrt</h4>
+        <p>GL.iNet · TP-Link<br>arm64 · mips</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">🔌</div>
+        <h4>Asus Merlin</h4>
+        <p>RT-AX88U and<br>compatible routers</p>
+      </div>
+      <div class="platform-card fade-in">
+        <div class="platform-icon">💾</div>
+        <h4>Synology NAS</h4>
+        <p>DSM 6.2+ · 7.x<br>x86_64 · aarch64</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLI DOCS -->
+<section id="cli">
+  <div class="container">
+    <div class="section-tag fade-in">// CLI Documentation</div>
+    <h2 class="section-title fade-in">The <code style="font-size:inherit;color:var(--accent)">nodex</code> command.</h2>
+    <p class="section-sub fade-in">A full-featured terminal VPN client. Install via npm or download directly from GitHub Releases.</p>
+
+    <div class="cli-layout">
+      <div class="cli-sidebar">
+        <ul class="cli-nav">
+          <li class="group-label">Auth</li>
+          <li><a href="#cmd-login" class="active">nodex login</a></li>
+          <li><a href="#cmd-logout">nodex logout</a></li>
+          <li><a href="#cmd-whoami">nodex whoami</a></li>
+          <li class="group-label">VPN</li>
+          <li><a href="#cmd-connect">nodex connect</a></li>
+          <li><a href="#cmd-status">nodex status</a></li>
+          <li><a href="#cmd-disconnect">nodex disconnect</a></li>
+          <li class="group-label">Info</li>
+          <li><a href="#cmd-nodes">nodex nodes</a></li>
+          <li><a href="#cmd-logs">nodex logs</a></li>
+          <li><a href="#cmd-version">nodex version</a></li>
+        </ul>
+      </div>
+
+      <div class="cli-content">
+
+        <div class="cmd-block fade-in" id="cmd-login">
+          <h3>nodex login</h3>
+          <p>Authenticate with your Google account. Opens a browser window for OAuth2 sign-in. Credentials saved securely to OS keychain.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex login</span>
+<br>
+<span style="color:var(--muted2)"># Opens browser → Google Sign-In</span>
+<span style="color:var(--accent3)">✔</span> Logged in as user@gmail.com
+          </div>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-logout">
+          <h3>nodex logout</h3>
+          <p>Remove saved credentials from OS keychain and disconnect any active session.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex logout</span>
+<span style="color:var(--accent3)">✔</span> Logged out successfully.
+          </div>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-whoami">
+          <h3>nodex whoami</h3>
+          <p>Show the currently authenticated account and token status.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex whoami</span>
+<span style="color:var(--muted)">Email:</span>  user@gmail.com
+<span style="color:var(--muted)">Name:</span>   Your Name
+<span style="color:var(--accent3)">✔</span> Token valid
+          </div>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-connect">
+          <h3>nodex connect</h3>
+          <p>Connect to the VPN. Routes all TCP traffic through a Tor circuit. Shows live bootstrap progress and real-time stats.</p>
+          <div class="code-block">
+<span class="code-comment"># Auto exit country</span>
+<span class="code-cmd">nodex connect</span>
+<br>
+<span class="code-comment"># Specific country</span>
+<span class="code-cmd">nodex connect <span class="code-flag">--country</span> <span class="code-value">DE</span></span>
+<br>
+<span class="code-comment"># Bridge mode (for censored networks)</span>
+<span class="code-cmd">nodex connect <span class="code-flag">--bridge</span> <span class="code-value">"obfs4 1.2.3.4:443 FINGERPRINT cert=... iat-mode=0"</span></span>
+<br>
+<span class="code-comment"># Custom SOCKS5 bind address</span>
+<span class="code-cmd">nodex connect <span class="code-flag">--socks</span> <span class="code-value">0.0.0.0:9050</span></span>
+<br>
+<span class="code-comment"># Verbose logging</span>
+<span class="code-cmd">nodex connect <span class="code-flag">--verbose</span></span>
+          </div>
+
+          <table class="options-table">
+            <tr><th>Option</th><th>Default</th><th>Description</th></tr>
+            <tr><td>--country ISO</td><td>automatic</td><td>Exit node country (US, DE, NL, JP…)</td></tr>
+            <tr><td>--bridge LINE</td><td>none</td><td>obfs4 bridge line. Repeatable.</td></tr>
+            <tr><td>--socks ADDR</td><td>127.0.0.1:9050</td><td>SOCKS5 listen address</td></tr>
+            <tr><td>--dns ADDR</td><td>127.0.0.1:5353</td><td>DNS-over-Tor listen address</td></tr>
+            <tr><td>--state-dir DIR</td><td>~/.nodex/state</td><td>Tor state directory</td></tr>
+            <tr><td>--verbose / -v</td><td>off</td><td>Debug logging</td></tr>
+            <tr><td>--quiet</td><td>off</td><td>No banner, pipe-friendly</td></tr>
+          </table>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-status">
+          <h3>nodex status</h3>
+          <p>Show current connection status, exit IP, throughput, and circuit info.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex status</span>
+<br>
+Status      :  <span style="color:var(--accent3)">✔ Connected</span>
+Exit country:  DE
+Exit IP     :  185.220.x.x
+Uptime      :  12m 34s
+↑ Upload    :  2.14 MB/s
+↓ Download  :  4.87 MB/s
+Latency     :  198 ms
+Circuits    :  3 active  1 pending
+          </div>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-nodes">
+          <h3>nodex nodes</h3>
+          <p>List available VPN exit nodes with latency and load information.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex nodes</span>
+<span class="code-cmd">nodex nodes <span class="code-flag">--country</span> <span class="code-value">NL</span></span>
+<span class="code-cmd">nodex nodes <span class="code-flag">--bridges</span></span>
+          </div>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-logs">
+          <h3>nodex logs</h3>
+          <p>Show recent engine log output. Useful for debugging connection issues.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex logs</span>
+<span class="code-cmd">nodex logs <span class="code-flag">--lines</span> <span class="code-value">100</span></span>
+          </div>
+        </div>
+
+        <div class="cmd-block fade-in" id="cmd-version">
+          <h3>nodex version</h3>
+          <p>Show full version info including build target and date.</p>
+          <div class="code-block">
+<span class="code-cmd">nodex version</span>
+<br>
+CLI Version :  0.1.0
+Build target:  x86_64-unknown-linux-gnu
+Build date  :  2026-04-28
+Vendor      :  AeonCoreX
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY NODEX -->
+<section id="why">
+  <div class="container">
+    <div class="section-tag fade-in">// Why NodeX VPN</div>
+    <h2 class="section-title fade-in">Not just another VPN.</h2>
+
+    <div class="why-grid">
+      <div class="fade-in">
+        <p class="section-sub">Most VPNs route your traffic through servers they own. You're trusting their no-log policy. NodeX uses the Tor network — thousands of volunteer relays worldwide. There's nothing for us to log even if we wanted to.</p>
+
+        <table class="comparison-table">
+          <tr>
+            <th></th>
+            <th class="nodex-col">NodeX</th>
+            <th>Comm. VPN</th>
+            <th>Plain Tor</th>
+          </tr>
+          <tr>
+            <td>Zero logs</td>
+            <td class="check nodex-col">✔</td>
+            <td class="partial">Promise</td>
+            <td class="check">✔</td>
+          </tr>
+          <tr>
+            <td>No owned servers</td>
+            <td class="check nodex-col">✔</td>
+            <td class="cross">✘</td>
+            <td class="check">✔</td>
+          </tr>
+          <tr>
+            <td>Mobile apps</td>
+            <td class="check nodex-col">✔</td>
+            <td class="check">✔</td>
+            <td class="partial">Limited</td>
+          </tr>
+          <tr>
+            <td>Router support</td>
+            <td class="check nodex-col">✔</td>
+            <td class="partial">Some</td>
+            <td class="cross">✘</td>
+          </tr>
+          <tr>
+            <td>Free forever</td>
+            <td class="check nodex-col">✔</td>
+            <td class="cross">✘</td>
+            <td class="check">✔</td>
+          </tr>
+          <tr>
+            <td>Exit country select</td>
+            <td class="check nodex-col">✔</td>
+            <td class="check">✔</td>
+            <td class="partial">Limited</td>
+          </tr>
+          <tr>
+            <td>Bridge / obfs4</td>
+            <td class="check nodex-col">✔</td>
+            <td class="cross">✘</td>
+            <td class="check">✔</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="why-points fade-in">
+        <div class="why-point">
+          <div class="why-icon">🔐</div>
+          <div>
+            <h4>End-to-End Encryption</h4>
+            <p>Three layers of AES-256 encryption. Each relay only decrypts one layer — like peeling an onion.</p>
+          </div>
+        </div>
+        <div class="why-point">
+          <div class="why-icon">🌐</div>
+          <div>
+            <h4>Decentralized Network</h4>
+            <p>7,000+ volunteer Tor relays in 90+ countries. No single point of failure, control, or logging.</p>
+          </div>
+        </div>
+        <div class="why-point">
+          <div class="why-icon">🚫</div>
+          <div>
+            <h4>Censorship Resistant</h4>
+            <p>obfs4 bridges disguise Tor traffic as random bytes. Bypasses deep packet inspection in restrictive networks.</p>
+          </div>
+        </div>
+        <div class="why-point">
+          <div class="why-icon">🆓</div>
+          <div>
+            <h4>Free Forever</h4>
+            <p>No subscription. No trial. No freemium. NodeX VPN is open source and will always be free.</p>
+          </div>
+        </div>
+        <div class="why-point">
+          <div class="why-icon">🏠</div>
+          <div>
+            <h4>Whole-Home Protection</h4>
+            <p>Install on your router — every device in your home is protected without installing anything on each device.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AEONCOREX -->
+<section id="aeoncorex">
+  <div class="container">
+    <div class="section-tag fade-in">// About</div>
+    <h2 class="section-title fade-in">Powered by AeonCoreX.</h2>
+    <p class="section-sub fade-in">NodeX VPN is a product of AeonCoreX — building open-source privacy and security tools.</p>
+
+    <div class="brand-card fade-in">
+      <div>
+        <div class="brand-logo-large">AeonCoreX</div>
+        <div class="brand-name-large">Privacy<br><span>First.</span></div>
+        <p class="brand-desc">
+          AeonCoreX builds open-source privacy and security tools designed for
+          the modern internet. Our products prioritize technical correctness,
+          decentralization, and user autonomy over convenience-for-profit.
+          <br><br>
+          NodeX VPN is our flagship product — a production-grade Tor-based
+          VPN client built in Rust, supporting 12 platforms from smartphones
+          to home routers.
+        </p>
+        <div class="product-pills">
+          <span class="product-pill active">NodeX VPN ← You are here</span>
+          <span class="product-pill">More coming soon</span>
+        </div>
+      </div>
+
+      <div class="brand-stats">
+        <div class="brand-stat-item">
+          <div class="brand-stat-num">12</div>
+          <div class="brand-stat-label">Platforms in NodeX VPN</div>
+        </div>
+        <div class="brand-stat-item">
+          <div class="brand-stat-num">Rust</div>
+          <div class="brand-stat-label">Core engine language</div>
+        </div>
+        <div class="brand-stat-item">
+          <div class="brand-stat-num">MIT</div>
+          <div class="brand-stat-label">Open source license</div>
+        </div>
+        <div class="brand-stat-item">
+          <div class="brand-stat-num">∞</div>
+          <div class="brand-stat-label">Free. No subscriptions.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL CTA -->
+<section id="install">
+  <div class="container">
+    <div class="section-tag fade-in">// Install</div>
+    <h2 class="section-title fade-in">Start using NodeX VPN.</h2>
+    <p class="section-sub fade-in" style="margin: 0 auto 0; text-align:center">Free. Open source. No account required for mobile apps.</p>
+
+    <div class="install-grid">
+      <div class="install-card fade-in">
+        <h4>📦 via npm</h4>
+        <div class="code-block">
+npm install -g @aeoncorex/nodex-vpn<br>
+nodex login<br>
+nodex connect
+        </div>
+      </div>
+      <div class="install-card fade-in">
+        <h4>🐧 Linux / Termux</h4>
+        <div class="code-block">
+tar -xzf nodex-linux-x86_64.tar.gz<br>
+sudo mv nodex /usr/local/bin/<br>
+nodex version
+        </div>
+      </div>
+      <div class="install-card fade-in">
+        <h4>🍎 macOS</h4>
+        <div class="code-block">
+tar -xzf nodex-macos-arm64.tar.gz<br>
+sudo mv nodex /usr/local/bin/<br>
+nodex version
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap" class="fade-in">
+      <a href="https://github.com/AeonCoreX/NodeX-VPN/releases" class="btn-primary">Download Latest Release</a>
+      <a href="https://github.com/AeonCoreX/NodeX-VPN" class="btn-secondary">View on GitHub →</a>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY POLICY -->
+<section id="privacy">
+  <div class="container">
+    <div class="section-tag fade-in">// Legal</div>
+    <h2 class="section-title fade-in">Privacy Policy</h2>
+    <div class="legal-content fade-in">
+      <p><em>Last updated: April 28, 2026. Effective immediately.</em></p>
+
+      <div class="legal-highlight">
+        <strong>The short version:</strong> NodeX VPN collects no logs, no usage data, and no personal information about your VPN activity. The only data we handle is your Google account email (for authentication) stored encrypted on your device.
+      </div>
+
+      <h3>1. Who We Are</h3>
+      <p>NodeX VPN is a product developed by AeonCoreX ("we", "us", "our"). We build open-source privacy tools. Our contact email is <a href="mailto:aeoncorexbd@gmail.com">aeoncorexbd@gmail.com</a>.</p>
+
+      <h3>2. What We Do NOT Collect</h3>
+      <ul>
+        <li>VPN traffic content or metadata</li>
+        <li>Websites you visit while connected</li>
+        <li>Your IP address (VPN sessions)</li>
+        <li>Connection timestamps or duration</li>
+        <li>Bandwidth usage</li>
+        <li>Device identifiers</li>
+        <li>Location data</li>
+      </ul>
+      <p>This is structurally enforced: NodeX VPN uses the Tor network — volunteer-operated relays that we do not own or control. We have no technical ability to log your VPN traffic even if compelled.</p>
+
+      <h3>3. What We Collect</h3>
+      <p><strong>Google Account Email:</strong> When you use <code>nodex login</code> or sign in via the desktop app, we store your Google account email address locally on your device using the OS keychain. This is used only to display your account name and is never transmitted to our servers.</p>
+      <p><strong>Google OAuth2 Token:</strong> A refresh token is stored encrypted in your OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service, or <code>~/.nodex/credentials.json</code> with mode 600). We do not receive or store this token on any server.</p>
+
+      <h3>4. Google Authentication</h3>
+      <p>We use Google OAuth2 for authentication. When you sign in, Google processes your authentication request under <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. We only receive your email address and display name from Google. We do not receive your Google password.</p>
+
+      <h3>5. GitHub</h3>
+      <p>Our source code, releases, and issue tracker are hosted on GitHub. GitHub's privacy policy applies to interactions with <a href="https://github.com/AeonCoreX/NodeX-VPN" target="_blank">our GitHub repository</a>.</p>
+
+      <h3>6. npm Registry</h3>
+      <p>NodeX VPN CLI is distributed via the npm registry (<code>@aeoncorex/nodex-vpn</code>). Download statistics visible to npm are aggregate counts — we cannot identify individual users from these statistics.</p>
+
+      <h3>7. Third-Party Tor Relays</h3>
+      <p>Your traffic is routed through Tor relays operated by volunteers worldwide. These relays are independent and not operated by AeonCoreX. Each relay has its own privacy characteristics. The Tor network is designed so that no single relay can identify both the origin and destination of traffic.</p>
+
+      <h3>8. Children's Privacy</h3>
+      <p>NodeX VPN is not directed at children under 13. We do not knowingly collect information from children under 13.</p>
+
+      <h3>9. Changes to This Policy</h3>
+      <p>We will update this policy if our practices change. The "Last updated" date at the top of this document will reflect any changes. Continued use after changes constitutes acceptance.</p>
+
+      <h3>10. Contact</h3>
+      <p>Questions about this privacy policy: <a href="mailto:aeoncorexbd@gmail.com">aeoncorexbd@gmail.com</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- TERMS -->
+<section id="terms">
+  <div class="container">
+    <div class="section-tag fade-in">// Legal</div>
+    <h2 class="section-title fade-in">Terms of Service</h2>
+    <div class="legal-content fade-in">
+      <p><em>Last updated: April 28, 2026. By using NodeX VPN you agree to these terms.</em></p>
+
+      <h3>1. Acceptance of Terms</h3>
+      <p>By downloading, installing, or using NodeX VPN ("the Software"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Software.</p>
+
+      <h3>2. License</h3>
+      <p>NodeX VPN is licensed under the MIT License. You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, subject to the MIT License terms. The source code is available at <a href="https://github.com/AeonCoreX/NodeX-VPN" target="_blank">github.com/AeonCoreX/NodeX-VPN</a>.</p>
+
+      <h3>3. Permitted Use</h3>
+      <p>NodeX VPN is provided for lawful privacy protection purposes including:</p>
+      <ul>
+        <li>Protecting your internet traffic on public networks</li>
+        <li>Bypassing censorship in countries that restrict internet access</li>
+        <li>Protecting your privacy from ISP surveillance</li>
+        <li>Research and security testing on systems you own or have permission to test</li>
+      </ul>
+
+      <h3>4. Prohibited Use</h3>
+      <p>You may not use NodeX VPN to:</p>
+      <ul>
+        <li>Engage in any illegal activity under applicable law</li>
+        <li>Harass, stalk, or harm other individuals</li>
+        <li>Distribute malware or conduct cyberattacks</li>
+        <li>Violate the terms of service of other platforms</li>
+        <li>Engage in activities that violate others' intellectual property rights</li>
+      </ul>
+
+      <h3>5. Disclaimer of Warranties</h3>
+      <div class="legal-highlight">
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. USE AT YOUR OWN RISK.
+      </div>
+
+      <h3>6. Limitation of Liability</h3>
+      <p>AeonCoreX shall not be liable for any indirect, incidental, special, exemplary, or consequential damages arising from your use of or inability to use NodeX VPN, even if advised of the possibility of such damage.</p>
+
+      <h3>7. Tor Network</h3>
+      <p>NodeX VPN routes traffic through the Tor network, which is operated by independent volunteers. AeonCoreX has no control over Tor relays and cannot guarantee the availability, speed, or security of the Tor network. Exit relay operators may be able to see unencrypted traffic destined for non-HTTPS websites.</p>
+
+      <h3>8. No Anonymity Guarantee</h3>
+      <p>While NodeX VPN significantly enhances your privacy, no technical solution provides perfect anonymity. Operational security (OpSec) practices by the user are also required for strong anonymity guarantees.</p>
+
+      <h3>9. Updates and Availability</h3>
+      <p>We may update, modify, or discontinue NodeX VPN at any time. As open-source software, you always retain the right to use the last available version under the MIT License.</p>
+
+      <h3>10. Governing Law</h3>
+      <p>These terms are governed by applicable law. Disputes shall be resolved in the appropriate jurisdiction.</p>
+
+      <h3>11. Contact</h3>
+      <p>Questions about these terms: <a href="mailto:aeoncorexbd@gmail.com">aeoncorexbd@gmail.com</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo" style="margin-bottom:4px">
+          <div class="nav-logo-icon">N</div>
+          <span class="nav-logo-text">NodeX<span>VPN</span></span>
+        </a>
+        <p>Tor-based privacy VPN by AeonCoreX. Free, open source, and serverless. 12 platforms. Zero logs.</p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#how">How it Works</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#platforms">Platforms</a></li>
+          <li><a href="#install">Download</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Docs</h5>
+        <ul>
+          <li><a href="#cli">CLI Reference</a></li>
+          <li><a href="https://github.com/AeonCoreX/NodeX-VPN/blob/main/RELEASES.md">Changelog</a></li>
+          <li><a href="https://github.com/AeonCoreX/NodeX-VPN/issues">Report a Bug</a></li>
+          <li><a href="https://github.com/AeonCoreX/NodeX-VPN">Source Code</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="#privacy">Privacy Policy</a></li>
+          <li><a href="#terms">Terms of Service</a></li>
+          <li><a href="https://github.com/AeonCoreX/NodeX-VPN/blob/main/LICENSE">MIT License</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© 2026 AeonCoreX. NodeX VPN is open source software under the MIT License.</span>
+      <div style="display:flex; gap:24px">
+        <a href="https://github.com/AeonCoreX/NodeX-VPN">GitHub</a>
+        <a href="https://www.npmjs.com/package/@aeoncorex/nodex-vpn">npm</a>
+        <a href="mailto:aeoncorexbd@gmail.com">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Scroll animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// CLI nav active state
+const cmdBlocks = document.querySelectorAll('.cmd-block');
+const cliLinks = document.querySelectorAll('.cli-nav a');
+
+const cliObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      cliLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.cli-nav a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-40% 0px -40% 0px' });
+
+cmdBlocks.forEach(b => cliObserver.observe(b));
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

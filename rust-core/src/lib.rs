@@ -3,6 +3,8 @@ uniffi::include_scaffolding!("nodex_vpn");
 
 mod error;
 mod tor_manager;
+#[cfg(feature = "cli")]
+pub mod auth;
 mod socks_proxy;
 mod tun2socks;
 mod tunnel;

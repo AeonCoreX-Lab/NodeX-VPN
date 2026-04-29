@@ -13,8 +13,8 @@ const ACCOUNT: &str = "google-oauth-token";
 pub struct StoredToken {
     pub access_token:  String,
     pub refresh_token: String,
-    pub email:         String,
-    pub name:          String,
+    pub email:         Option<String>,
+    pub name:          Option<String>,
     pub expires_at:    i64,   // Unix timestamp
 }
 
