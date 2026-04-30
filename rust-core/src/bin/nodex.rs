@@ -9,8 +9,8 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use is_terminal::IsTerminal;
-use crate::auth;
-use crate::{
+use nodex_vpn_core::auth;
+use nodex_vpn_core::{
     start_nodex, stop_nodex, is_running,
     get_bootstrap_status, get_real_time_stats,
     get_available_nodes, set_exit_node,

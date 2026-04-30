@@ -1,0 +1,90 @@
+# .github/workflows/pages.yml
+#
+# NodeX VPN — GitHub Pages Deployment
+# Powered by AeonCoreX
+#
+# Deploys the website/ folder to GitHub Pages automatically.
+#
+# Triggers:
+#   - Push to main branch (any change to website/)
+#   - Manual trigger from GitHub Actions tab
+#
+# Setup (one-time):
+#   GitHub repo → Settings → Pages
+#   → Source: GitHub Actions  ← select this (NOT "Deploy from branch")
+
+name: Deploy Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"        # only run when website changes
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:         # allow manual trigger from Actions tab
+
+# Allow only one deployment at a time
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages:    write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify website directory
+        run: |
+          echo "Website files:"
+          find website/ -type f | sort
+          echo ""
+          echo "Checking required pages..."
+          for page in website/index.html website/docs/index.html website/privacy/index.html website/terms/index.html; do
+            if [ -f "$page" ]; then
+              echo "  ✔ $page"
+            else
+              echo "  ✘ MISSING: $page"
+              exit 1
+            fi
+          done
+
+      # Ensure .nojekyll exists so GitHub doesn't process with Jekyll
+      - name: Ensure .nojekyll
+        run: touch website/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Print deployed URL
+        run: |
+          echo ""
+          echo "  ✔ Website deployed successfully!"
+          echo "  URL: ${{ steps.deploy.outputs.page_url }}"
+          echo ""
+          echo "  Pages:"
+          echo "    Home:    ${{ steps.deploy.outputs.page_url }}"
+          echo "    Docs:    ${{ steps.deploy.outputs.page_url }}docs/"
+          echo "    Privacy: ${{ steps.deploy.outputs.page_url }}privacy/"
+          echo "    Terms:   ${{ steps.deploy.outputs.page_url }}terms/"

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation — NodeX VPN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030508;--bg2:#07090f;--bg3:#0b0f1a;--card:#0e1422;--border:#1c2538;--border2:#273347;--accent:#00cfff;--green:#00e87a;--yellow:#f5c842;--text:#eef2f8;--sub:#8899b0;--dim:#3d4f63;--head:'Bricolage Grotesque',sans-serif;--mono:'JetBrains Mono',monospace}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.7;overflow-x:hidden}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 48px;background:rgba(3,5,8,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-box{width:30px;height:30px;border:1.5px solid var(--accent);border-radius:6px;display:grid;place-items:center;font-family:var(--head);font-weight:800;font-size:14px;color:var(--accent)}
+.logo-name{font-family:var(--head);font-weight:800;font-size:17px;color:var(--text)}
+.logo-name em{color:var(--accent);font-style:normal}
+.nav-r{display:flex;align-items:center;gap:28px}
+.nav-r a{color:var(--sub);text-decoration:none;font-size:12px;letter-spacing:.04em;text-transform:uppercase;transition:color .2s}
+.nav-r a:hover{color:var(--accent)}
+.nav-home{padding:7px 18px;border:1px solid var(--border2);border-radius:6px}
+
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh;padding-top:60px}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:32px 0}
+.sb-section{margin-bottom:28px}
+.sb-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em;padding:0 24px;margin-bottom:8px;font-family:var(--mono)}
+.sb-link{display:block;padding:8px 24px;color:var(--sub);text-decoration:none;font-size:13px;font-family:var(--mono);border-left:2px solid transparent;transition:all .15s}
+.sb-link:hover,.sb-link.on{color:var(--accent);background:rgba(0,207,255,.04);border-left-color:var(--accent)}
+
+/* CONTENT */
+.content{padding:60px 72px 100px;max-width:820px}
+
+.page-tag{font-size:11px;color:var(--accent);letter-spacing:.16em;text-transform:uppercase;margin-bottom:12px}
+/* Page title */
+.page-h1{font-family:var(--head);font-size:48px;font-weight:800;line-height:1.05;letter-spacing:-1.8px;margin-bottom:14px;color:var(--text)}
+.page-sub{color:var(--sub);font-size:14px;line-height:1.8;margin-bottom:52px;max-width:540px}
+
+/* Section heading */
+h2.dh{font-family:var(--head);font-size:28px;font-weight:800;line-height:1.1;letter-spacing:-.8px;margin:52px 0 14px;color:var(--text);scroll-margin-top:80px}
+h2.dh:first-of-type{margin-top:0}
+/* Subsection */
+h3.ds{font-family:var(--head);font-size:20px;font-weight:700;line-height:1.15;letter-spacing:-.4px;margin:32px 0 12px;color:var(--text)}
+
+p.dp{color:var(--sub);font-size:13.5px;line-height:1.85;margin-bottom:16px}
+
+/* Code block */
+.cb{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin:20px 0;overflow:hidden}
+.cb-head{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;color:var(--dim)}
+.cb-body{padding:20px 22px;font-family:var(--mono);font-size:12.5px;line-height:1.95;overflow-x:auto}
+.cb-body .p{color:var(--green)}.cb-body .c{color:var(--dim)}.cb-body .kw{color:var(--yellow)}.cb-body .v{color:var(--accent)}.cb-body .ok{color:var(--green)}.cb-body .ac{color:var(--accent)}.cb-body .mu{color:var(--sub)}
+
+/* Inline code */
+code{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:12px;color:var(--accent)}
+
+/* Options table */
+.ot{width:100%;border-collapse:collapse;font-size:12.5px;margin:20px 0 30px}
+.ot th{padding:10px 14px;background:var(--card);border:1px solid var(--border);font-family:var(--head);font-weight:700;font-size:12px;text-align:left;color:var(--sub);text-transform:uppercase;letter-spacing:.06em}
+.ot td{padding:11px 14px;border:1px solid var(--border);vertical-align:top}
+.ot td:first-child{color:var(--green);font-family:var(--mono);font-size:12px}
+.ot td:nth-child(2){color:var(--dim);font-family:var(--mono);font-size:11px}
+.ot td:nth-child(3){color:var(--sub);font-size:12.5px}
+
+/* Callout */
+.note{background:rgba(0,207,255,.05);border:1px solid rgba(0,207,255,.15);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;font-size:13px;color:var(--text);line-height:1.7}
+.warn{background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.15);border-left:3px solid var(--yellow);border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;font-size:13px;color:var(--text);line-height:1.7}
+
+/* Divider */
+hr.div{border:none;border-top:1px solid var(--border);margin:52px 0}
+
+@media(max-width:768px){
+  nav{padding:0 20px}
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .content{padding:32px 20px 80px}
+  .page-h1{font-size:36px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="../" class="logo">
+    <div class="logo-box">N</div>
+    <span class="logo-name">NodeX<em>VPN</em></span>
+  </a>
+  <div class="nav-r">
+    <a href="../#features">Features</a>
+    <a href="../#platforms">Platforms</a>
+    <a href="../" class="nav-home">← Home</a>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Getting Started</div>
+      <a href="#install" class="sb-link on">Installation</a>
+      <a href="#quickstart" class="sb-link">Quick Start</a>
+      <a href="#auth" class="sb-link">Authentication</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">CLI Commands</div>
+      <a href="#cmd-login" class="sb-link">nodex login</a>
+      <a href="#cmd-logout" class="sb-link">nodex logout</a>
+      <a href="#cmd-whoami" class="sb-link">nodex whoami</a>
+      <a href="#cmd-connect" class="sb-link">nodex connect</a>
+      <a href="#cmd-status" class="sb-link">nodex status</a>
+      <a href="#cmd-nodes" class="sb-link">nodex nodes</a>
+      <a href="#cmd-logs" class="sb-link">nodex logs</a>
+      <a href="#cmd-version" class="sb-link">nodex version</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Guides</div>
+      <a href="#bridges" class="sb-link">Bridge Mode</a>
+      <a href="#router" class="sb-link">Router Setup</a>
+      <a href="#termux" class="sb-link">Termux (Android)</a>
+      <a href="#nocolor" class="sb-link">Scripting & NO_COLOR</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Reference</div>
+      <a href="#env" class="sb-link">Environment Variables</a>
+      <a href="#files" class="sb-link">File Locations</a>
+      <a href="#build" class="sb-link">Build from Source</a>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <div class="page-tag">CLI Documentation</div>
+    <h1 class="page-h1">NodeX VPN<br>CLI Reference</h1>
+    <p class="page-sub">Full reference for the <code>nodex</code> command-line client. Covers installation, all commands, bridge mode, router setup, and scripting.</p>
+
+    <!-- INSTALL -->
+    <h2 class="dh" id="install">Installation</h2>
+
+    <h3 class="ds">via npm (recommended)</h3>
+    <p class="dp">The easiest way. npm selects the correct platform binary automatically.</p>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+<span class="c"># Global install</span>
+npm install -g @aeoncorex/nodex-vpn
+
+<span class="c"># Run without installing</span>
+npx @aeoncorex/nodex-vpn version
+      </div>
+    </div>
+
+    <h3 class="ds">Manual Download</h3>
+    <p class="dp">Download the binary for your platform from <a href="https://github.com/AeonCoreX/NodeX-VPN/releases" style="color:var(--accent)">GitHub Releases</a>.</p>
+    <div class="cb">
+      <div class="cb-head">Linux / Termux</div>
+      <div class="cb-body">
+tar -xzf nodex-linux-x86_64-v0.1.0.tar.gz
+sudo mv nodex-linux-x86_64-v0.1.0/nodex /usr/local/bin/
+nodex version
+
+<span class="c"># Termux (no sudo)</span>
+mv nodex ~/.local/bin/
+      </div>
+    </div>
+    <div class="cb">
+      <div class="cb-head">macOS</div>
+      <div class="cb-body">
+tar -xzf nodex-macos-arm64-v0.1.0.tar.gz
+sudo mv nodex-macos-arm64-v0.1.0/nodex /usr/local/bin/
+nodex version
+      </div>
+    </div>
+    <div class="cb">
+      <div class="cb-head">Windows (PowerShell)</div>
+      <div class="cb-body">
+Expand-Archive nodex-windows-x86_64-v0.1.0.zip
+<span class="c"># Add the extracted folder to your PATH, then:</span>
+nodex.exe version
+      </div>
+    </div>
+
+    <hr class="div">
+
+    <!-- QUICK START -->
+    <h2 class="dh" id="quickstart">Quick Start</h2>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+<span class="c"># 1. Log in with Google</span>
+<span class="p">$</span> nodex login
+<span class="ok">✔</span> Logged in as user@gmail.com
+
+<span class="c"># 2. Connect (auto exit country)</span>
+<span class="p">$</span> nodex connect
+<span class="ac">[██████████████████████████████]</span> <span class="ok">100%</span> Connected!
+
+<span class="c"># 3. Connect with specific country</span>
+<span class="p">$</span> nodex connect <span class="kw">--country</span> <span class="v">DE</span>
+
+<span class="c"># 4. Check status</span>
+<span class="p">$</span> nodex status
+
+<span class="c"># 5. Disconnect (Ctrl+C while connected, or)</span>
+<span class="p">$</span> nodex disconnect
+      </div>
+    </div>
+
+    <hr class="div">
+
+    <!-- AUTH -->
+    <h2 class="dh" id="auth">Authentication</h2>
+    <p class="dp">NodeX VPN uses Google OAuth2 PKCE for authentication. When you run <code>nodex login</code>, a browser window opens and you sign in with your Google account. The token is stored encrypted in your OS keychain — never sent to any NodeX server.</p>
+    <div class="note"><strong>Note:</strong> Authentication is only required for the CLI. Mobile and desktop apps have their own sign-in flow.</div>
+
+    <hr class="div">
+
+    <!-- CMD LOGIN -->
+    <h2 class="dh" id="cmd-login">nodex login</h2>
+    <p class="dp">Authenticate with your Google account. Opens a browser for OAuth2 sign-in. Stores the token securely in the OS keychain.</p>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+<span class="p">$</span> nodex login
+
+<span class="c">  › Opening browser for Google Sign-In…</span>
+<span class="c">  › Waiting on localhost:9005…</span>
+
+<span class="ok">  ✔</span> Logged in as user@gmail.com
+<span class="mu">  Name:    Your Name</span>
+      </div>
+    </div>
+    <p class="dp">If the browser doesn't open automatically (e.g. headless Termux), the URL is printed to the terminal for manual opening.</p>
+
+    <!-- CMD LOGOUT -->
+    <h2 class="dh" id="cmd-logout">nodex logout</h2>
+    <p class="dp">Remove saved credentials from the OS keychain.</p>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body"><span class="p">$</span> nodex logout
+<span class="ok">  ✔</span> Logged out successfully.</div>
+    </div>
+
+    <!-- CMD WHOAMI -->
+    <h2 class="dh" id="cmd-whoami">nodex whoami</h2>
+    <p class="dp">Show the currently authenticated account and token validity.</p>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+<span class="p">$</span> nodex whoami
+<span class="mu">  Email:</span>  user@gmail.com
+<span class="mu">  Name:</span>   Your Name
+<span class="ok">  ✔</span> Token valid
+      </div>
+    </div>
+
+    <!-- CMD CONNECT -->
+    <h2 class="dh" id="cmd-connect">nodex connect</h2>
+    <p class="dp">Connect to NodeX VPN. Routes all TCP traffic through a Tor circuit. Shows real-time bootstrap progress and live stats while connected.</p>
+    <div class="cb">
+      <div class="cb-head">Usage</div>
+      <div class="cb-body">
+nodex connect [OPTIONS]
+
+  <span class="kw">-c, --country</span> &lt;ISO&gt;      Exit country (US, DE, NL, JP, GB…)
+  <span class="kw">-b, --bridge</span>  &lt;LINE&gt;     obfs4 bridge line (repeatable)
+      <span class="kw">--socks</span>   &lt;ADDR&gt;     SOCKS5 listen addr [default: 127.0.0.1:9050]
+      <span class="kw">--dns</span>     &lt;ADDR&gt;     DNS-over-Tor addr  [default: 127.0.0.1:5353]
+      <span class="kw">--state-dir</span> &lt;DIR&gt;   Tor state dir      [default: ~/.nodex/state]
+      <span class="kw">--cache-dir</span> &lt;DIR&gt;   Tor cache dir      [default: ~/.nodex/cache]
+  <span class="kw">-v, --verbose</span>             Debug logging
+      <span class="kw">--quiet</span>               No banner, pipe-friendly
+      </div>
+    </div>
+
+    <table class="ot">
+      <tr><th>Option</th><th>Default</th><th>Description</th></tr>
+      <tr><td>--country ISO</td><td>automatic</td><td>ISO 3166-1 alpha-2 exit country code</td></tr>
+      <tr><td>--bridge LINE</td><td>none</td><td>obfs4 bridge line. Can be repeated for multiple bridges.</td></tr>
+      <tr><td>--socks ADDR</td><td>127.0.0.1:9050</td><td>SOCKS5 proxy listen address and port</td></tr>
+      <tr><td>--dns ADDR</td><td>127.0.0.1:5353</td><td>DNS-over-Tor listen address and port</td></tr>
+      <tr><td>--state-dir</td><td>~/.nodex/state</td><td>Tor state directory (guard keys, etc.)</td></tr>
+      <tr><td>--cache-dir</td><td>~/.nodex/cache</td><td>Tor cache directory (consensus, descriptors)</td></tr>
+      <tr><td>--verbose / -v</td><td>off</td><td>Enable debug-level log output</td></tr>
+      <tr><td>--quiet</td><td>off</td><td>Suppress banner. Respects NO_COLOR.</td></tr>
+    </table>
+
+    <div class="cb">
+      <div class="cb-head">Examples</div>
+      <div class="cb-body">
+<span class="c"># Auto exit country</span>
+nodex connect
+
+<span class="c"># Germany exit node</span>
+nodex connect <span class="kw">--country</span> <span class="v">DE</span>
+
+<span class="c"># Bridge mode (for censored networks)</span>
+nodex connect <span class="kw">--bridge</span> <span class="v">"obfs4 1.2.3.4:443 FINGERPRINT cert=... iat-mode=0"</span>
+
+<span class="c"># Listen on all interfaces (router/proxy mode)</span>
+nodex connect <span class="kw">--socks</span> <span class="v">0.0.0.0:9050</span> <span class="kw">--dns</span> <span class="v">0.0.0.0:5353</span>
+
+<span class="c"># Quiet mode for scripting</span>
+nodex connect <span class="kw">--country</span> <span class="v">NL</span> <span class="kw">--quiet</span>
+      </div>
+    </div>
+
+    <!-- CMD STATUS -->
+    <h2 class="dh" id="cmd-status">nodex status</h2>
+    <p class="dp">Show current connection status, exit IP, throughput, and circuit info.</p>
+    <div class="cb">
+      <div class="cb-head">Output</div>
+      <div class="cb-body">
+<span class="p">$</span> nodex status
+
+<span class="mu">  Status      :</span>  <span class="ok">✔ Connected</span>
+<span class="mu">  Bootstrap   :</span>  100%  Done
+<span class="mu">  Exit country:</span>  DE
+<span class="mu">  Exit IP     :</span>  185.220.x.x
+<span class="mu">  Uptime      :</span>  12m 34s
+<span class="mu">  ↑ Upload    :</span>  2.14 MB/s
+<span class="mu">  ↓ Download  :</span>  4.87 MB/s
+<span class="mu">  Sent total  :</span>  94.3 MB
+<span class="mu">  Recv total  :</span>  312.1 MB
+<span class="mu">  Latency     :</span>  198 ms
+<span class="mu">  Circuits    :</span>  3 active  1 pending
+      </div>
+    </div>
+
+    <!-- CMD NODES -->
+    <h2 class="dh" id="cmd-nodes">nodex nodes</h2>
+    <p class="dp">List available VPN exit nodes with latency and load. Load is color-coded: green ≤40%, yellow 41–70%, red &gt;70%.</p>
+    <div class="cb">
+      <div class="cb-head">Usage</div>
+      <div class="cb-body">
+nodex nodes [<span class="kw">--country</span> &lt;ISO&gt;] [<span class="kw">--bridges</span>]
+
+<span class="c"># Examples</span>
+nodex nodes
+nodex nodes <span class="kw">--country</span> <span class="v">NL</span>
+nodex nodes <span class="kw">--bridges</span>
+      </div>
+    </div>
+
+    <!-- CMD LOGS -->
+    <h2 class="dh" id="cmd-logs">nodex logs</h2>
+    <p class="dp">Show recent engine log output. Useful for debugging bootstrap or connection issues.</p>
+    <div class="cb">
+      <div class="cb-head">Usage</div>
+      <div class="cb-body">
+nodex logs [<span class="kw">--lines</span> &lt;N&gt;]
+
+<span class="c"># Show last 50 lines (default)</span>
+nodex logs
+
+<span class="c"># Show last 200 lines</span>
+nodex logs <span class="kw">--lines</span> <span class="v">200</span>
+      </div>
+    </div>
+
+    <!-- CMD VERSION -->
+    <h2 class="dh" id="cmd-version">nodex version</h2>
+    <p class="dp">Show full version, build target, and build date.</p>
+    <div class="cb">
+      <div class="cb-head">Output</div>
+      <div class="cb-body">
+<span class="p">$</span> nodex version
+
+<span class="mu">  CLI Version :</span>  0.1.0
+<span class="mu">  Build target:</span>  x86_64-unknown-linux-gnu
+<span class="mu">  Build date  :</span>  2026-04-29
+<span class="mu">  Vendor      :</span>  AeonCoreX
+<span class="mu">  License     :</span>  MIT
+      </div>
+    </div>
+
+    <hr class="div">
+
+    <!-- BRIDGES -->
+    <h2 class="dh" id="bridges">Bridge Mode</h2>
+    <p class="dp">If Tor is blocked in your network (China, Iran, Russia, etc.), use bridges with <code>--bridge</code>. Bridges are unlisted Tor relays that disguise your traffic as random bytes using the obfs4 protocol.</p>
+
+    <h3 class="ds">Getting Bridge Lines</h3>
+    <p class="dp">Get official bridges from <a href="https://bridges.torproject.org" style="color:var(--accent)" target="_blank">bridges.torproject.org</a> — select "obfs4" as the transport type.</p>
+
+    <div class="cb">
+      <div class="cb-head">Bridge Mode Usage</div>
+      <div class="cb-body">
+<span class="c"># Single bridge</span>
+nodex connect \
+  <span class="kw">--bridge</span> <span class="v">"obfs4 1.2.3.4:443 FINGERPRINT cert=XXXX iat-mode=0"</span>
+
+<span class="c"># Multiple bridges (repeat --bridge)</span>
+nodex connect \
+  <span class="kw">--bridge</span> <span class="v">"obfs4 1.2.3.4:443 FP1 cert=X iat-mode=0"</span> \
+  <span class="kw">--bridge</span> <span class="v">"obfs4 5.6.7.8:9001 FP2 cert=Y iat-mode=0"</span>
+      </div>
+    </div>
+
+    <hr class="div">
+
+    <!-- ROUTER -->
+    <h2 class="dh" id="router">Router Setup</h2>
+    <p class="dp">Run NodeX VPN on a router to protect all devices on your network automatically — Smart TVs, game consoles, IoT devices — without installing anything on each device.</p>
+
+    <h3 class="ds">pfSense / OPNsense (FreeBSD)</h3>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+<span class="c"># Download FreeBSD binary</span>
+fetch https://github.com/AeonCoreX/NodeX-VPN/releases/latest/download/nodex-freebsd-x86_64-v0.1.0.tar.gz
+tar -xzf nodex-freebsd-x86_64-v0.1.0.tar.gz
+cp nodex-freebsd-x86_64-v0.1.0/nodex /usr/local/bin/
+
+<span class="c"># Listen on all interfaces for LAN routing</span>
+nodex connect <span class="kw">--socks</span> <span class="v">0.0.0.0:9050</span> <span class="kw">--dns</span> <span class="v">0.0.0.0:5353</span>
+      </div>
+    </div>
+
+    <h3 class="ds">OpenWrt</h3>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+<span class="c"># Download arm64 binary (for most modern routers)</span>
+wget https://github.com/AeonCoreX/NodeX-VPN/releases/latest/download/nodex-linux-aarch64-v0.1.0.tar.gz
+tar -xzf nodex-linux-aarch64-v0.1.0.tar.gz
+mv nodex /usr/bin/
+
+nodex connect <span class="kw">--socks</span> <span class="v">0.0.0.0:9050</span>
+      </div>
+    </div>
+
+    <div class="warn"><strong>Note:</strong> Point your LAN DNS to the router's IP on port 5353 to enable DNS-over-Tor for all devices. Set SOCKS5 proxy on individual apps or configure transparent proxying via iptables.</div>
+
+    <hr class="div">
+
+    <!-- TERMUX -->
+    <h2 class="dh" id="termux">Termux (Android)</h2>
+    <p class="dp">NodeX VPN runs natively on Termux — the Android terminal emulator.</p>
+    <div class="cb">
+      <div class="cb-head">Termux setup</div>
+      <div class="cb-body">
+<span class="c"># Install via npm (recommended)</span>
+pkg install nodejs
+npm install -g @aeoncorex/nodex-vpn
+nodex login
+nodex connect
+
+<span class="c"># Or download the arm64 binary directly</span>
+wget https://github.com/AeonCoreX/NodeX-VPN/releases/latest/download/nodex-linux-aarch64-v0.1.0.tar.gz
+tar -xzf nodex-linux-aarch64-v0.1.0.tar.gz
+mv nodex-linux-aarch64-v0.1.0/nodex $PREFIX/bin/
+nodex version
+      </div>
+    </div>
+
+    <hr class="div">
+
+    <!-- NO_COLOR -->
+    <h2 class="dh" id="nocolor">Scripting & NO_COLOR</h2>
+    <p class="dp">NodeX VPN auto-detects terminal color support and respects the <a href="https://no-color.org" style="color:var(--accent)" target="_blank">NO_COLOR</a> standard.</p>
+    <div class="cb">
+      <div class="cb-head">Color control</div>
+      <div class="cb-body">
+<span class="c"># Disable color (piping also disables automatically)</span>
+NO_COLOR=1 nodex status
+
+<span class="c"># Suppress banner for scripting</span>
+nodex connect <span class="kw">--quiet</span> <span class="kw">--country</span> DE
+
+<span class="c"># Parse status output</span>
+nodex status <span class="kw">--quiet</span> | grep "Exit IP"
+      </div>
+    </div>
+
+    <hr class="div">
+
+    <!-- ENV VARS -->
+    <h2 class="dh" id="env">Environment Variables</h2>
+    <table class="ot">
+      <tr><th>Variable</th><th>Description</th></tr>
+      <tr><td>NO_COLOR</td><td>Set to any value to disable ANSI color output</td></tr>
+      <tr><td>NODEX_GOOGLE_CLIENT_ID</td><td>Override built-in Google OAuth2 Client ID (dev/test)</td></tr>
+      <tr><td>NODEX_GOOGLE_CLIENT_SECRET</td><td>Override built-in Google OAuth2 Client Secret</td></tr>
+    </table>
+
+    <hr class="div">
+
+    <!-- FILES -->
+    <h2 class="dh" id="files">File Locations</h2>
+    <table class="ot">
+      <tr><th>File</th><th>Platform</th><th>Contents</th></tr>
+      <tr><td>~/.nodex/credentials.json</td><td>Linux / macOS / Termux</td><td>OAuth2 token (fallback if OS keychain unavailable)</td></tr>
+      <tr><td>~/.nodex/state/</td><td>All</td><td>Tor state (guard keys, etc.)</td></tr>
+      <tr><td>~/.nodex/cache/</td><td>All</td><td>Tor cache (consensus, descriptors)</td></tr>
+      <tr><td>%APPDATA%\NodeX\</td><td>Windows</td><td>State and credentials</td></tr>
+    </table>
+    <p class="dp">The credentials file is created with <code>chmod 600</code> (Unix) — readable only by the current user. On macOS, Windows, and Linux with a secret service, credentials are stored in the OS keychain instead.</p>
+
+    <hr class="div">
+
+    <!-- BUILD -->
+    <h2 class="dh" id="build">Build from Source</h2>
+    <p class="dp">Requires Rust stable (1.70+) and Cargo.</p>
+    <div class="cb">
+      <div class="cb-head">shell</div>
+      <div class="cb-body">
+git clone https://github.com/AeonCoreX/NodeX-VPN.git
+cd NodeX-VPN/rust-core
+
+<span class="c"># Set your Google OAuth2 credentials</span>
+export NODEX_GOOGLE_CLIENT_ID="your-client-id"
+export NODEX_GOOGLE_CLIENT_SECRET="your-client-secret"
+
+<span class="c"># Build CLI</span>
+cargo build <span class="kw">--release --features</span> cli <span class="kw">--bin</span> nodex
+
+<span class="c"># Binary location</span>
+./target/release/nodex version
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const links = document.querySelectorAll('.sb-link');
+const heads = document.querySelectorAll('[id]');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('on'));
+      const a = document.querySelector(`.sb-link[href="#${e.target.id}"]`);
+      if (a) a.classList.add('on');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+heads.forEach(h => io.observe(h));
+</script>
+</body>
+</html>
