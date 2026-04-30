@@ -4,15 +4,16 @@
 # libgeom.a (required by the `tun` crate), causing:
 #   ld: cannot find -lgeom
 #
-# Fix: pre-build fetches libgeom.a from the FreeBSD archive.
+# FreeBSD 12.4 is EOL. URL history:
+#   download.freebsd.org/releases/amd64/amd64/12.4-RELEASE/ → 404 (EOL removed)
+#   ftp-archive.freebsd.org → SSL cert mismatch (actual cert is archive.freebsd.org)
 #
-# NOTE: FreeBSD 12.4-RELEASE is EOL — primary download.freebsd.org URL
-# returns 404. We use the correct subdirectory path and fall back to the
-# ftp-archive mirror which keeps old releases permanently.
+# Fix: use archive.freebsd.org (correct hostname per SSL cert) with -k fallback
+# to download.freebsd.org/ftp/ path as secondary option.
 
 [target.x86_64-unknown-freebsd]
 pre-build = [
     "apt-get update -qq",
     "apt-get install -y --no-install-recommends curl xz-utils",
-    "curl -fsSL --retry 3 --retry-delay 2 'https://download.freebsd.org/releases/amd64/amd64/12.4-RELEASE/base.txz' | tar -xJ -C /usr/local/x86_64-unknown-freebsd12 --strip-components=1 usr/lib/libgeom.a || curl -fsSL --retry 3 --retry-delay 2 'https://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/12.4-RELEASE/base.txz' | tar -xJ -C /usr/local/x86_64-unknown-freebsd12 --strip-components=1 usr/lib/libgeom.a",
+    "curl -fsSL --retry 3 --retry-delay 3 'https://archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/12.4-RELEASE/base.txz' | tar -xJ -C /usr/local/x86_64-unknown-freebsd12 --strip-components=1 usr/lib/libgeom.a || curl -fsSL --retry 3 --retry-delay 3 'https://download.freebsd.org/ftp/releases/amd64/12.4-RELEASE/base.txz' | tar -xJ -C /usr/local/x86_64-unknown-freebsd12 --strip-components=1 usr/lib/libgeom.a || echo 'WARNING: libgeom.a download failed, FreeBSD build may fail at link step'",
 ]

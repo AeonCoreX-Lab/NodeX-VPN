@@ -1,0 +1,628 @@
+name: NodeX VPN — Multi-Platform Build
+
+on:
+  push:
+    branches: [main, develop]
+    tags:     ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE:   1
+  # Opt into Node.js 24 for all GitHub Actions now.
+  # Node.js 20 is deprecated and will be FORCED to Node.js 24 on June 2, 2026.
+  # Without this, the runner prints deprecation warnings on every job.
+  # Remove this line once actions/checkout, actions/cache, actions/upload-artifact
+  # release new major versions with Node.js 24 as the default runtime.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 1: Build Rust core for ALL targets
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  rust-core:
+    name: "Rust [${{ matrix.target }}]"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Android (4 ABIs) ───────────────────────────────────────────────
+          - { target: aarch64-linux-android,     os: ubuntu-24.04,     group: android }
+          - { target: armv7-linux-androideabi,   os: ubuntu-24.04,     group: android }
+          - { target: x86_64-linux-android,      os: ubuntu-24.04,     group: android }
+          - { target: i686-linux-android,        os: ubuntu-24.04,     group: android }
+          # ── iOS (device + simulators) ──────────────────────────────────────
+          - { target: aarch64-apple-ios,         os: macos-15,         group: ios     }
+          - { target: x86_64-apple-ios,          os: macos-15,         group: ios     }
+          - { target: aarch64-apple-ios-sim,     os: macos-15,         group: ios     }
+          # ── tvOS targets ──────────────────────────────────────────────────
+          - { target: aarch64-apple-tvos,        os: macos-15,         group: tvos    }
+          - { target: aarch64-apple-tvos-sim,    os: macos-15,         group: tvos    }
+          # ── macOS (x64 + arm64) ───────────────────────────────────────────
+          - { target: x86_64-apple-darwin,       os: macos-15,         group: macos   }
+          - { target: aarch64-apple-darwin,      os: macos-15,         group: macos   }
+          # ── Linux / Router (x64 + arm64) ─────────────────────────────────
+          - { target: x86_64-unknown-linux-gnu,  os: ubuntu-24.04,     group: linux   }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm, group: linux   }
+          # ── FreeBSD x64 (pfSense / OPNsense) ─────────────────────────────
+          - { target: x86_64-unknown-freebsd,   os: ubuntu-24.04,     group: freebsd }
+          # ── Windows (x64 + arm64) ─────────────────────────────────────────
+          - { target: x86_64-pc-windows-msvc,    os: windows-2022,     group: windows }
+          - { target: aarch64-pc-windows-msvc,   os: windows-11-arm,   group: windows }
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets:    ${{ matrix.target }}
+          components: clippy, rustfmt
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust-core/target
+          key: rust-v2-${{ matrix.target }}-${{ hashFiles('rust-core/Cargo.lock') }}
+
+      - name: Install Android NDK + cargo-ndk
+        if:   matrix.group == 'android'
+        uses: nttld/setup-ndk@v1
+        with: { ndk-version: r28b }
+
+      - name: Install cargo-ndk
+        if:   matrix.group == 'android'
+        run:  cargo install cargo-ndk --locked
+
+      - name: Linux build deps
+        if:   matrix.group == 'linux'
+        run:  sudo apt-get install -y --no-install-recommends libssl-dev pkg-config libdbus-1-dev
+
+      # FreeBSD cross-compilation via cross (uses QEMU + FreeBSD Docker image)
+      - name: Install cross (FreeBSD cross-compiler)
+        if:   matrix.group == 'freebsd'
+        run:  cargo install cross --locked
+
+      - name: Build (FreeBSD — via cross)
+        if:   matrix.group == 'freebsd'
+        working-directory: rust-core
+        run: |
+          # cross handles the FreeBSD sysroot + linker automatically
+          cross build --release --target x86_64-unknown-freebsd
+          # Also build the CLI binary for router deployments
+          cross build --release --features cli --bin nodex --target x86_64-unknown-freebsd
+
+      - name: Build (Android)
+        if:   matrix.group == 'android'
+        working-directory: rust-core
+        env:
+          OPENSSL_STATIC: 1
+        run:  cargo ndk -t ${{ matrix.target }} -o ../shared/src/androidMain/jniLibs build --release
+
+      # ── tvOS: patch pwd-grp for libc compatibility ───────────────────────
+      # pwd-grp v0.1.1 (pulled by arti-client) calls libc::getresuid /
+      # libc::getresgid in lmockable.rs. These POSIX calls exist on Linux,
+      # macOS and iOS but are ABSENT from tvOS's restricted libc, causing:
+      #   error[E0425]: cannot find value `getresuid` in crate `libc`
+      # Fix: pre-fetch pwd-grp into the cargo registry cache, add
+      #   #[cfg(not(target_os = "tvos"))] guards on the two offending fields,
+      # then regenerate .cargo-checksum.json so cargo accepts the patched source.
+      - name: Patch pwd-grp for tvOS libc compatibility
+        if:   contains(matrix.target, 'apple-tvos')
+        working-directory: rust-core
+        run: |
+          cargo fetch --target ${{ matrix.target }}
+          python3 ../ci/patch_pwd_grp_tvos.py
+
+      - name: Build (non-Android, non-FreeBSD)
+        if:   matrix.group != 'android' && matrix.group != 'freebsd'
+        working-directory: rust-core
+        run:  cargo build --release --target ${{ matrix.target }}
+        env:
+          NODEX_DESKTOP_GOOGLE_CLIENT_ID:     ${{ secrets.DESKTOP_GOOGLE_CLIENT_ID }}
+          NODEX_DESKTOP_GOOGLE_CLIENT_SECRET: ${{ secrets.DESKTOP_GOOGLE_CLIENT_SECRET }}
+          FIREBASE_WEB_API_KEY:               ${{ secrets.FIREBASE_WEB_API_KEY }}
+
+      - name: Build CLI (desktop targets)
+        if:   matrix.group == 'linux' || matrix.group == 'macos' || matrix.group == 'windows'
+        working-directory: rust-core
+        run:  cargo build --release --features cli --bin nodex --target ${{ matrix.target }}
+
+      - name: UniFFI tvOS Swift bindings
+        if:   matrix.target == 'aarch64-apple-tvos'
+        working-directory: rust-core
+        run: |
+          cargo run --release --bin uniffi-bindgen \
+            generate src/nodex_vpn.udl --language swift \
+            --out-dir ../tvosApp/Sources/generated/
+
+      - name: UniFFI Kotlin bindings
+        if:   matrix.target == 'aarch64-linux-android'
+        working-directory: rust-core
+        run: |
+          cargo run --release --bin uniffi-bindgen \
+            generate src/nodex_vpn.udl --language kotlin \
+            --out-dir ../shared/src/commonMain/kotlin/com/nodex/vpn/generated/
+
+      - name: UniFFI Swift bindings
+        if:   matrix.target == 'aarch64-apple-ios'
+        working-directory: rust-core
+        run: |
+          cargo run --release --bin uniffi-bindgen \
+            generate src/nodex_vpn.udl --language swift \
+            --out-dir ../iosApp/Sources/generated/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-core-${{ matrix.target }}
+          path: |
+            rust-core/target/${{ matrix.target }}/release/libnodex_vpn_core.*
+            rust-core/target/${{ matrix.target }}/release/nodex_vpn_core.*
+          retention-days: 7
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 2: Android APK + AAB
+#   Each ABI downloaded separately into jniLibs/<abi>/ — flat download breaks
+#   mergeDebugNativeLibs with "not an ABI" error.
+# ─────────────────────────────────────────────────────────────────────────────
+  android:
+    name: "Android APK + AAB"
+    needs: rust-core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Inject google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > androidApp/google-services.json
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
+          chmod +x gradlew
+
+      - name: Download JNI lib — arm64-v8a  (aarch64-linux-android)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-aarch64-linux-android
+          path: shared/src/androidMain/jniLibs/arm64-v8a/
+
+      - name: Download JNI lib — armeabi-v7a (armv7-linux-androideabi)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-armv7-linux-androideabi
+          path: shared/src/androidMain/jniLibs/armeabi-v7a/
+
+      - name: Download JNI lib — x86_64     (x86_64-linux-android)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-linux-android
+          path: shared/src/androidMain/jniLibs/x86_64/
+
+      - name: Download JNI lib — x86        (i686-linux-android)
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-i686-linux-android
+          path: shared/src/androidMain/jniLibs/x86/
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run:  ./gradlew :androidApp:assembleDebug
+
+      - name: Build release AAB
+        run:  ./gradlew :androidApp:bundleRelease
+        env:
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS:     ${{ secrets.KEY_ALIAS }}
+          KEY_PASS:      ${{ secrets.KEY_PASS }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android-apk, path: "androidApp/build/outputs/apk/debug/*.apk" }
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android-aab, path: "androidApp/build/outputs/bundle/release/*.aab" }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 2b: Android TV APK + AAB
+# Shares the same JNI libs and signing config as androidApp.
+# ─────────────────────────────────────────────────────────────────────────────
+  android-tv:
+    name: "Android TV APK + AAB"
+    needs: rust-core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Inject google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > androidApp/google-services.json
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > androidApp/nodex-release.jks
+          chmod +x gradlew
+
+      - name: Download JNI lib — arm64-v8a
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-aarch64-linux-android
+          path: shared/src/androidMain/jniLibs/arm64-v8a/
+
+      - name: Download JNI lib — armeabi-v7a
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-armv7-linux-androideabi
+          path: shared/src/androidMain/jniLibs/armeabi-v7a/
+
+      - name: Download JNI lib — x86_64
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-linux-android
+          path: shared/src/androidMain/jniLibs/x86_64/
+
+      - name: Download JNI lib — x86
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-i686-linux-android
+          path: shared/src/androidMain/jniLibs/x86/
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build TV debug APK
+        run:  ./gradlew :androidTvApp:assembleDebug
+
+      - name: Build TV release AAB
+        run:  ./gradlew :androidTvApp:bundleRelease
+        env:
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS:     ${{ secrets.KEY_ALIAS }}
+          KEY_PASS:      ${{ secrets.KEY_PASS }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android-tv-apk, path: "androidTvApp/build/outputs/apk/debug/*.apk" }
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android-tv-aab, path: "androidTvApp/build/outputs/bundle/release/*.aab" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 3: iOS IPA
+# ─────────────────────────────────────────────────────────────────────────────
+  ios:
+    name: "iOS IPA"
+    needs: rust-core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject GoogleService-Info.plist
+        run: echo '${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}' > iosApp/iosApp/GoogleService-Info.plist
+
+      - name: Download aarch64-apple-ios artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-aarch64-apple-ios
+          path: rust-core/target/aarch64-apple-ios/release/
+
+      - name: Download x86_64-apple-ios artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-apple-ios
+          path: rust-core/target/x86_64-apple-ios/release/
+
+      - name: Build iOS XCFramework
+        run: |
+          mkdir -p artifacts
+          xcodebuild -create-xcframework \
+            -library rust-core/target/aarch64-apple-ios/release/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -library rust-core/target/x86_64-apple-ios/release/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -output artifacts/NodexVpnCore.xcframework
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '3.3', bundler-cache: true }
+
+      - name: Install CocoaPods
+        working-directory: iosApp
+        run: pod install --repo-update
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x gradlew
+      # FIX: CocoaPods integration generates linkPodRelease* tasks, not linkRelease*.
+      # linkReleaseFrameworkIosArm64 is ambiguous — partial-name match finds both
+      # linkPodReleaseFrameworkIosArm64 AND linkPodReleaseFrameworkIosSimulatorArm64.
+      - name: Build KMP iOS framework
+        run: ./gradlew :shared:linkPodReleaseFrameworkIosArm64
+
+      - name: Xcode archive
+        run: |
+          xcodebuild archive \
+            -workspace iosApp/NodeXVPN.xcworkspace \
+            -scheme NodeXVPN \
+            -sdk iphoneos \
+            -archivePath build/NodeXVPN.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/NodeXVPN.xcarchive \
+            -exportOptionsPlist iosApp/ExportOptions.plist \
+            -exportPath build/ipa/
+
+      - uses: actions/upload-artifact@v4
+        with: { name: ios-ipa, path: "build/ipa/*.ipa" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 3b: tvOS IPA (Apple TV)
+# ─────────────────────────────────────────────────────────────────────────────
+  tvos:
+    name: "tvOS IPA (Apple TV)"
+    needs: rust-core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject GoogleService-Info.plist for tvOS
+        run: echo '${{ secrets.GOOGLE_SERVICE_INFO_PLIST_TVOS }}' > tvosApp/tvosApp/GoogleService-Info.plist
+
+      - name: Download aarch64-apple-tvos artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-aarch64-apple-tvos
+          path: rust-core/target/aarch64-apple-tvos/release/
+
+      - name: Download aarch64-apple-tvos-sim artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-aarch64-apple-tvos-sim
+          path: rust-core/target/aarch64-apple-tvos-sim/release/
+
+      - name: Build tvOS XCFramework
+        run: |
+          mkdir -p artifacts
+          xcodebuild -create-xcframework \
+            -library rust-core/target/aarch64-apple-tvos/release/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -library rust-core/target/aarch64-apple-tvos-sim/release/libnodex_vpn_core.a \
+            -headers rust-core/src/ \
+            -output artifacts/NodexVpnCore.xcframework
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '3.3', bundler-cache: true }
+
+      - name: Install CocoaPods (tvOS)
+        working-directory: tvosApp
+        run: pod install --repo-update
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x gradlew
+
+      # Build KMP framework for tvOS arm64 target
+      - name: Build KMP tvOS framework
+        run: ./gradlew :shared:linkPodReleaseFrameworkTvosArm64
+
+      - name: Xcode archive (tvOS)
+        run: |
+          xcodebuild archive \
+            -workspace tvosApp/NodeXTvVPN.xcworkspace \
+            -scheme NodeXTvVPN \
+            -sdk appletvos \
+            -archivePath build/NodeXTvVPN.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Export tvOS IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/NodeXTvVPN.xcarchive \
+            -exportOptionsPlist tvosApp/ExportOptions.plist \
+            -exportPath build/tvos-ipa/
+
+      - uses: actions/upload-artifact@v4
+        with: { name: tvos-ipa, path: "build/tvos-ipa/*.ipa" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 4: Desktop macOS DMG
+# ─────────────────────────────────────────────────────────────────────────────
+  desktop-macos:
+    name: "Desktop macOS DMG"
+    needs: rust-core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - name: Download macOS Rust libs (x64 + arm64)
+        uses: actions/download-artifact@v4
+        with:
+          pattern:        rust-core-*apple-darwin
+          merge-multiple: true
+          path:           desktopApp/resources/macos/
+
+      - name: Build ICNS from iconset
+        run: |
+          iconutil -c icns desktopApp/resources/macos/AppIcon.iconset \
+            -o desktopApp/resources/macos/icon.icns
+          echo "icon.icns created"
+
+      - name: Update iconFile to use .icns
+        run: |
+          sed -i '' 's|AppIcon.iconset/icon_512x512@2x.png|icon.icns|g' \
+            desktopApp/build.gradle.kts
+
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew
+      - run: ./gradlew :desktopApp:packageDmg
+
+      - uses: actions/upload-artifact@v4
+        with: { name: macos-dmg, path: "desktopApp/build/compose/binaries/main/dmg/*.dmg" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 5: Desktop Linux DEB + RPM  (x64 on ubuntu-24.04, arm64 on ubuntu-24.04-arm)
+# ─────────────────────────────────────────────────────────────────────────────
+  desktop-linux:
+    name: "Desktop Linux ${{ matrix.arch }} DEB+RPM"
+    needs: rust-core
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64,   runner: ubuntu-24.04,     rust-target: x86_64-unknown-linux-gnu  }
+          - { arch: arm64, runner: ubuntu-24.04-arm,  rust-target: aarch64-unknown-linux-gnu }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - run: sudo apt-get install -y rpm
+
+      - name: Download Linux Rust lib (${{ matrix.arch }})
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-${{ matrix.rust-target }}
+          path: desktopApp/resources/linux/rust/
+
+      - name: Place native lib for packaging
+        run: |
+          mv desktopApp/resources/linux/rust/libnodex_vpn_core.so \
+             desktopApp/resources/linux/libnodex_vpn_core.so || true
+
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew
+      - run: ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages-${{ matrix.arch }}
+          path: |
+            desktopApp/build/compose/binaries/main/deb/*.deb
+            desktopApp/build/compose/binaries/main/rpm/*.rpm
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 6: Desktop Windows MSI  (x64 only)
+# NOTE: ARM64 Windows desktop is skipped because Compose Multiplatform 1.7.3
+# does not publish a desktop-jvm-windows-arm64 artifact. The Rust core for
+# aarch64-pc-windows-msvc is still built and uploaded as a CI artifact so it
+# can be bundled once CMP adds windows-arm64 desktop support.
+# ─────────────────────────────────────────────────────────────────────────────
+  desktop-windows:
+    name: "Desktop Windows x64 MSI"
+    needs: rust-core
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - name: Download Windows x64 Rust lib
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-pc-windows-msvc
+          path: desktopApp/resources/windows/
+
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :desktopApp:packageMsi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi-x64
+          path: desktopApp/build/compose/binaries/main/msi/*.msi
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 8: Router Package (OpenWrt / GL.iNet / Merlin)
+#   Bundles the Linux binary + install scripts into a router tarball.
+#   Produces: nodex-vpn-router-{x86_64,aarch64}-unknown-linux-gnu.tar.gz
+# ─────────────────────────────────────────────────────────────────────────────
+  router-package:
+    name: "Router Package (${{ matrix.target }})"
+    needs: rust-core
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-gnu,  runner: ubuntu-24.04     }
+          - { target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux Rust binary (${{ matrix.target }})
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-${{ matrix.target }}
+          path: rust-core/target/${{ matrix.target }}/release/
+
+      - name: Build router tarball
+        run: |
+          chmod +x router/package.sh
+          NODEX_VERSION="${{ github.ref_name }}" bash router/package.sh             ${{ matrix.target }} dist/router/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: router-${{ matrix.target }}
+          path: |
+            dist/router/*.tar.gz
+            dist/router/*.spk
+          retention-days: 30
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 8b: Router Package — pfSense / OPNsense (FreeBSD x86_64)
+#   Bundles the FreeBSD binary + setup_pfsense_opnsense.sh into a tarball.
+#   Produces: nodex-vpn-router-x86_64-unknown-freebsd-<ver>.tar.gz
+# ─────────────────────────────────────────────────────────────────────────────
+  router-package-freebsd:
+    name: "Router Package (pfSense/OPNsense — FreeBSD x86_64)"
+    needs: rust-core
+    runs-on: ubuntu-24.04
+    env:
+      TARGET: x86_64-unknown-freebsd
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download FreeBSD Rust binary
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-core-x86_64-unknown-freebsd
+          path: rust-core/target/x86_64-unknown-freebsd/release/
+
+      - name: Build FreeBSD router tarball
+        run: |
+          chmod +x router/package.sh
+          NODEX_VERSION="${{ github.ref_name }}" bash router/package.sh             x86_64-unknown-freebsd dist/router/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: router-x86_64-unknown-freebsd
+          path: dist/router/*.tar.gz
+          retention-days: 30
+

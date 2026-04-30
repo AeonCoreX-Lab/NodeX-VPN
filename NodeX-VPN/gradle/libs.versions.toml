@@ -1,0 +1,59 @@
+[versions]
+kotlin                    = "2.1.0"
+agp                       = "8.5.2"
+composeMultiplatform      = "1.7.3"
+coroutines                = "1.9.0"
+ktor                      = "3.0.3"
+koin                      = "4.0.0"
+kotlinxSerialization      = "1.7.3"
+kotlinxDatetime           = "0.6.1"
+androidxActivityCompose   = "1.9.3"
+androidxLifecycle         = "2.8.7"
+androidxCore              = "1.15.0"
+googleServices            = "4.4.2"
+firebaseBom               = "33.7.0"
+googlePlayServicesAuth    = "21.3.0"
+androidxTv                = "1.0.0"
+
+[libraries]
+kotlinx-coroutines-core       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",       version.ref = "coroutines" }
+kotlinx-coroutines-android    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android",    version.ref = "coroutines" }
+kotlinx-coroutines-swing      = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing",      version.ref = "coroutines" }
+kotlinx-coroutines-play       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutines" }
+kotlinx-serialization-json    = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json",    version.ref = "kotlinxSerialization" }
+kotlinx-datetime              = { module = "org.jetbrains.kotlinx:kotlinx-datetime",              version.ref = "kotlinxDatetime" }
+
+ktor-client-core              = { module = "io.ktor:ktor-client-core",                    version.ref = "ktor" }
+ktor-client-okhttp            = { module = "io.ktor:ktor-client-okhttp",                  version.ref = "ktor" }
+ktor-client-darwin            = { module = "io.ktor:ktor-client-darwin",                  version.ref = "ktor" }
+ktor-client-cio               = { module = "io.ktor:ktor-client-cio",                     version.ref = "ktor" }
+ktor-serialization-json       = { module = "io.ktor:ktor-serialization-kotlinx-json",     version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation",  version.ref = "ktor" }
+
+koin-core                     = { module = "io.insert-koin:koin-core",                    version.ref = "koin" }
+koin-android                  = { module = "io.insert-koin:koin-android",                 version.ref = "koin" }
+koin-compose                  = { module = "io.insert-koin:koin-compose",                 version.ref = "koin" }
+
+androidx-activity-compose     = { module = "androidx.activity:activity-compose",          version.ref = "androidxActivityCompose" }
+androidx-lifecycle-viewmodel  = { module = "androidx.lifecycle:lifecycle-viewmodel",       version.ref = "androidxLifecycle" }
+androidx-core-ktx             = { module = "androidx.core:core-ktx",                      version.ref = "androidxCore" }
+
+# Compose for TV — stable 1.0.0 (Material3 + Foundation for D-pad navigation)
+androidx-tv-foundation        = { module = "androidx.tv:tv-foundation",                   version.ref = "androidxTv" }
+androidx-tv-material          = { module = "androidx.tv:tv-material",                     version.ref = "androidxTv" }
+
+firebase-bom                  = { module = "com.google.firebase:firebase-bom",            version.ref = "firebaseBom" }
+firebase-auth                 = { module = "com.google.firebase:firebase-auth-ktx" }
+firebase-analytics            = { module = "com.google.firebase:firebase-analytics-ktx" }
+google-play-auth              = { module = "com.google.android.gms:play-services-auth",   version.ref = "googlePlayServicesAuth" }
+jna                           = { module = "net.java.dev.jna:jna",                        version = "5.14.0" }
+jna-platform                  = { module = "net.java.dev.jna:jna-platform",               version = "5.14.0" }
+
+[plugins]
+androidApplication     = { id = "com.android.application",                    version.ref = "agp" }
+androidLibrary         = { id = "com.android.library",                        version.ref = "agp" }
+kotlinMultiplatform    = { id = "org.jetbrains.kotlin.multiplatform",          version.ref = "kotlin" }
+composeMultiplatform   = { id = "org.jetbrains.compose",                      version.ref = "composeMultiplatform" }
+composeCompiler        = { id = "org.jetbrains.kotlin.plugin.compose",         version.ref = "kotlin" }
+kotlinSerialization    = { id = "org.jetbrains.kotlin.plugin.serialization",   version.ref = "kotlin" }
+googleServices         = { id = "com.google.gms.google-services",              version.ref = "googleServices" }

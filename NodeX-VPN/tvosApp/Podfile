@@ -1,0 +1,29 @@
+# tvosApp/Podfile
+# Firebase for NodeX VPN Apple TV
+# GoogleService-Info.plist injected via CI GitHub secret — never committed.
+
+platform :tvos, '16.0'
+use_frameworks!
+inhibit_all_warnings!
+
+workspace 'NodeXTvVPN'
+
+target 'NodeXTvVPN' do
+  # Firebase — tvOS supports FirebaseAuth and Analytics
+  pod 'FirebaseCore',      '~> 11.6'
+  pod 'FirebaseAuth',      '~> 11.6'
+  pod 'FirebaseAnalytics', '~> 11.6'
+
+  # GoogleSignIn supports tvOS via device flow (TV code auth)
+  pod 'GoogleSignIn',      '~> 8.0'
+
+  # KMP shared framework linked via Package.swift
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['TVOS_DEPLOYMENT_TARGET'] = '16.0'
+    end
+  end
+end

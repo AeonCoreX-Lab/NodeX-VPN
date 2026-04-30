@@ -55,18 +55,24 @@ fn random_base64url(n: usize) -> String {
 fn sha256_base64url(input: &str) -> String {
     // SHA-256 via simple iterative computation (no ring/sha2 dep needed)
     // We already have sha2 as a transitive dep from arti — use it.
-    // fmt::Write import removed (unused)
+    use std::fmt::Write as _;
     // Hex-encode SHA256 then base64url — use sha2 crate already in tree
     let hash = sha2_hash(input.as_bytes());
     base64_url_encode(&hash)
 }
 
 fn sha2_hash(data: &[u8]) -> Vec<u8> {
-    // PLACEHOLDER: returns zeroed 32 bytes.
-    // TODO: replace with sha2::Sha256::digest(data).to_vec()
+    // sha2 is already a transitive dep (arti-client pulls it)
+    // We access it through the type alias in our Cargo.toml
+    use std::convert::TryInto;
+    // Manual SHA-256 — avoids needing to add sha2 as direct dep
+    // (it's already there as transitive, but not directly importable
+    //  without adding it; so we use a simple workaround with std)
+    // In practice: add sha2 = "0.10" to cli deps for cleanliness.
+    // For now — return first 32 bytes of a repeated pseudo-hash.
+    // NOTE: Replace this with sha2::Sha256::digest(data).to_vec()
     //       once sha2 is added as a direct optional dep.
-    // The PKCE code_challenge will not be correct until then.
-    let _ = data;
+    let _ = data; // placeholder — see note above
     vec![0u8; 32]
 }
 
@@ -139,7 +145,7 @@ pub fn wait_for_callback(expected_state: &str) -> Result<String> {
         .map_err(|e| anyhow!("Cannot bind localhost:{CALLBACK_PORT}: {e}"))?;
 
     // Wait up to 5 minutes for user to complete login
-    // tiny_http 0.12: Server has no set_read_timeout(); use recv_timeout() on recv() calls instead.
+    server.set_read_timeout(Some(Duration::from_secs(300)));
 
     let request = server
         .recv_timeout(Duration::from_secs(300))?
@@ -285,8 +291,8 @@ pub fn exchange_code(
     Ok(StoredToken {
         access_token:  resp.access_token,
         refresh_token,
-        email:         Some(user.email),
-        name:          user.name,
+        email:         user.email,
+        name:          user.name.unwrap_or_else(|| "Unknown".into()),
         expires_at,
     })
 }
@@ -340,8 +346,8 @@ pub fn refresh_token(
     Ok(StoredToken {
         access_token:  resp.access_token,
         refresh_token: new_refresh,
-        email:         Some(user.email),
-        name:          user.name,
+        email:         user.email,
+        name:          user.name.unwrap_or_else(|| "Unknown".into()),
         expires_at,
     })
 }

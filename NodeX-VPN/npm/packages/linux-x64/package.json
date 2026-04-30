@@ -1,0 +1,27 @@
+{
+  "name": "@aeoncorex/nodex-vpn-linux-x64",
+  "version": "0.1.0",
+  "description": "NodeX VPN CLI binary for linux/x64",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AeonCoreX/NodeX-VPN.git"
+  },
+  "license": "MIT",
+  "author": "AeonCoreX",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "libc": [
+    "glibc"
+  ]
+}
