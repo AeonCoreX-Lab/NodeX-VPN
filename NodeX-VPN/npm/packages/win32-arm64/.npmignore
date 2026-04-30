@@ -1,2 +1,0 @@
-# Exclude placeholder JS file — real binary injected by CI before publish
-bin/*.js
