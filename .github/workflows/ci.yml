@@ -48,6 +48,8 @@ jobs:
           - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm, group: linux   }
           # ── FreeBSD x64 (pfSense / OPNsense) ─────────────────────────────
           - { target: x86_64-unknown-freebsd,   os: ubuntu-24.04,     group: freebsd }
+          - { target: aarch64-unknown-freebsd,  os: ubuntu-24.04,     group: freebsd }
+          - { target: armv7-unknown-linux-gnueabihf, os: ubuntu-24.04, group: linux   }
           # ── Windows (x64 + arm64) ─────────────────────────────────────────
           - { target: x86_64-pc-windows-msvc,    os: windows-2022,     group: windows }
           - { target: aarch64-pc-windows-msvc,   os: windows-11-arm,   group: windows }
@@ -92,9 +94,9 @@ jobs:
         working-directory: rust-core
         run: |
           # cross handles the FreeBSD sysroot + linker automatically
-          cross build --release --target x86_64-unknown-freebsd
-          # Also build the CLI binary for router deployments
-          cross build --release --features cli --bin nodex --target x86_64-unknown-freebsd
+          cross build --release --target ${{ matrix.target }}
+          # Also build the CLI binary for router/NAS deployments
+          cross build --release --features cli --bin nodex --target ${{ matrix.target }}
 
       - name: Build (Android)
         if:   matrix.group == 'android'

@@ -134,13 +134,32 @@ jobs:
             bin:       nodex.exe
             archive:   zip
 
-          # ── FreeBSD (router / pfSense / OPNsense) ────────────────────────────
+          # ── FreeBSD (router / pfSense / OPNsense / Raspberry Pi FreeBSD) ────
           - label:     freebsd-x86_64
             os:        ubuntu-22.04
             target:    x86_64-unknown-freebsd
             use_cross: true
             artifact:  nodex-freebsd-x86_64
             npm_pkg:   ""            # FreeBSD not on npm
+            bin:       nodex
+            archive:   tar.gz
+
+          - label:     freebsd-aarch64
+            os:        ubuntu-22.04
+            target:    aarch64-unknown-freebsd
+            use_cross: true
+            artifact:  nodex-freebsd-aarch64
+            npm_pkg:   ""            # FreeBSD not on npm
+            bin:       nodex
+            archive:   tar.gz
+
+          # ── Linux ARMv7 (Raspberry Pi 2/3 32-bit, old routers) ───────────────
+          - label:     linux-armv7
+            os:        ubuntu-22.04
+            target:    armv7-unknown-linux-gnueabihf
+            use_cross: true
+            artifact:  nodex-linux-armv7
+            npm_pkg:   ""            # armv7 not in npm matrix (use linux-arm64)
             bin:       nodex
             archive:   tar.gz
 
