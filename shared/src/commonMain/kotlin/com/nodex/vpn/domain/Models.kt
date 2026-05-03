@@ -125,12 +125,34 @@ data class TrafficHistory(
 
 @Serializable
 data class NodeXConfig(
-    val selectedNodeId:    String?  = null,
-    val useBridges:        Boolean  = false,
-    val bridgeLines:       List<String> = emptyList(),
-    val strictExitNodes:   Boolean  = true,
-    val killSwitch:        Boolean  = true,
-    val dnsOverTor:        Boolean  = true,
-    val autoConnect:       Boolean  = false,
-    val circuitTimeout:    Int      = 30,
+    val selectedNodeId:          String?      = null,
+    val useBridges:              Boolean      = false,
+    val bridgeLines:             List<String> = emptyList(),
+    val strictExitNodes:         Boolean      = true,
+    // Priority 1: Safety
+    val killSwitch:              Boolean      = true,
+    val autoReconnect:           Boolean      = true,
+    // Priority 2: UX
+    val dnsOverTor:              Boolean      = true,
+    val httpsWarn:               Boolean      = true,
+    val backgroundBootstrap:     Boolean      = true,
+    val autoConnect:             Boolean      = false,
+    val circuitTimeout:          Int          = 30,
+    // Priority 3: Power users
+    val onionAccess:             Boolean      = true,
+    // Advanced: Split Tunneling
+    val splitTunnelMode:         String       = "Disabled",
+    val splitTunnelBypassApps:   List<String> = emptyList(),
+    val splitTunnelBypassDomains:List<String> = emptyList(),
+    // Advanced: Privacy
+    val ipv6Protection:          Boolean      = true,
+    val webRtcProtection:        Boolean      = true,
+    val macRandomization:        Boolean      = false,
+    // Advanced: Performance
+    val speedTestEnabled:        Boolean      = true,
+    val bandwidthUploadMbps:     Float        = 0f,   // 0 = unlimited
+    val bandwidthDownloadMbps:   Float        = 0f,
+    // Advanced: Auth
+    val socks5Username:          String?      = null,
+    val socks5Password:          String?      = null,
 )

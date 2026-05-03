@@ -10,6 +10,11 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use is_terminal::IsTerminal;
 use nodex_vpn_core::auth;
+use nodex_vpn_core::kill_switch::KillSwitch;
+use nodex_vpn_core::reconnect::{Reconnector, ReconnectEvent};
+use nodex_vpn_core::features::{
+    HttpsChecker, BackgroundBootstrap, UsageStats, OnionDetector, fmt_bytes as feat_fmt,
+};
 use nodex_vpn_core::{
     start_nodex, stop_nodex, is_running,
     get_bootstrap_status, get_real_time_stats,
@@ -49,6 +54,16 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+enum FavoritesAction {
+    /// List all favorites
+    List,
+    /// Add a node to favorites
+    Add { node_id: String, #[arg(default_value = "")] label: String },
+    /// Remove a node from favorites
+    Remove { node_id: String },
+}
+
+#[derive(Subcommand)]
 enum Commands {
     /// Connect to NodeX VPN and show live status
     Connect {
@@ -80,6 +95,19 @@ enum Commands {
         /// Enable verbose / debug logging
         #[arg(short, long)]
         verbose: bool,
+
+        /// Block all traffic if VPN drops (kill switch)
+        /// Requires root/admin on most platforms
+        #[arg(long)]
+        kill_switch: bool,
+
+        /// Warn when connecting to HTTP (non-HTTPS) sites
+        #[arg(long, default_value = "true")]
+        https_warn: bool,
+
+        /// Auto-reconnect if circuit drops
+        #[arg(long, default_value = "true")]
+        auto_reconnect: bool,
     },
 
     /// Show current connection status and live stats
@@ -105,6 +133,26 @@ enum Commands {
 
     /// Show version and build information
     Version,
+
+    /// Show cumulative usage statistics
+    Stats {
+        /// Reset all saved statistics
+        #[arg(long)]
+        reset: bool,
+    },
+
+    /// Run DNS/IPv6/exit IP leak test (must be connected)
+    LeakTest,
+
+    /// Test latency to available exit nodes
+    SpeedTest,
+
+    /// Manage favorite servers
+    Favorites {
+        #[command(subcommand)]
+        action: FavoritesAction,
+    },
+    
 
     /// Log in with your Google account
     Login,
@@ -209,13 +257,17 @@ fn main() {
 
     match cli.command {
         Commands::Version => { print_banner(false); cmd_version(); }
-        Commands::Connect { country, bridge, socks, dns, state_dir, cache_dir, verbose } => {
+        Commands::Connect { country, bridge, socks, dns, state_dir, cache_dir, verbose, kill_switch, https_warn, auto_reconnect } => {
             print_banner(quiet);
-            cmd_connect(country, bridge, socks, dns, state_dir, cache_dir, verbose, quiet);
+            cmd_connect(country, bridge, socks, dns, state_dir, cache_dir, verbose, kill_switch, https_warn, auto_reconnect, quiet);
         }
         Commands::Status                       => { print_banner(quiet); cmd_status(); }
         Commands::Nodes { country, bridges }   => { print_banner(quiet); cmd_nodes(country, bridges); }
         Commands::Logs  { lines }              => cmd_logs(lines),
+        Commands::Stats { reset }              => cmd_stats(reset, quiet),
+        Commands::LeakTest                     => cmd_leak_test(quiet),
+        Commands::SpeedTest                    => cmd_speed_test(quiet),
+        Commands::Favorites { action }         => cmd_favorites(action, quiet),
         Commands::Login                        => { print_banner(quiet); cmd_login(quiet); }
         Commands::Logout                       => cmd_logout(),
         Commands::Whoami                       => cmd_whoami(),
@@ -338,11 +390,46 @@ fn cmd_connect(
     }
     println!();
 
+    // ── Kill Switch ──────────────────────────────────────────────────────────
+    let ks = KillSwitch::new(9050, 5353);
+    if kill_switch {
+        if !ks.is_supported() {
+            if c { println!("  {} Kill switch not supported on this platform.", "⚠".yellow()); }
+            else  { println!("  [WARN] Kill switch not supported on this platform."); }
+        } else {
+            match ks.enable() {
+                Ok(_)  => {
+                    if c { println!("  {} Kill switch enabled — traffic blocked if VPN drops.", "🔒".green().bold()); }
+                    else  { println!("  [OK] Kill switch enabled."); }
+                }
+                Err(e) => {
+                    if c { println!("  {} Kill switch failed (run as root?): {e}", "⚠".yellow()); }
+                    else  { println!("  [WARN] Kill switch failed: {e}"); }
+                }
+            }
+        }
+        println!();
+    }
+
+    // ── HTTPS checker ─────────────────────────────────────────────────────────
+    let _https_checker = HttpsChecker::new(https_warn);
+
+    // ── Usage stats ───────────────────────────────────────────────────────────
+    let mut usage = UsageStats::load();
+    let exit_country = get_real_time_stats().current_exit_country.clone();
+    let exit_ip      = get_real_time_stats().current_exit_ip.clone();
+    usage.session_start(exit_country, exit_ip);
+
+    let ks_ref = &ks;
+    let ks_enabled = kill_switch;
     ctrlc::set_handler(move || {
         println!();
         if c { println!("  {} Disconnecting…", "›".bright_black()); }
         else  { println!("  Disconnecting..."); }
         let _ = stop_nodex();
+        if ks_enabled {
+            let _ = KillSwitch::new(9050, 5353).disable();
+        }
     }).ok();
 
     // ── Live stats header ─────────────────────────────────────────────────────
@@ -519,6 +606,51 @@ fn fmt_duration(secs: u64) -> String {
     if h > 0 { format!("{h}h {m:02}m {s:02}s") } else { format!("{m:02}m {s:02}s") }
 }
 
+// ── stats ─────────────────────────────────────────────────────────────────────
+
+fn cmd_stats(reset: bool, quiet: bool) {
+    let c = colors_enabled();
+    if reset {
+        // Reset by saving empty stats
+        let fresh = UsageStats::new();
+        match fresh.save() {
+            Ok(_)  => {
+                if c { println!("  {} Usage statistics reset.", "✔".green().bold()); }
+                else  { println!("  [OK] Stats reset."); }
+            }
+            Err(e) => {
+                if c { eprintln!("  {} Failed: {e}", "✘".red().bold()); }
+                else  { eprintln!("  [ERROR] {e}"); }
+            }
+        }
+        return;
+    }
+
+    let stats = UsageStats::load();
+    if !quiet { println!(); }
+
+    if c {
+        status_row("Total sessions  ", &stats.total_sessions.to_string(), c);
+        status_row("Data sent       ", &nodex_vpn_core::features::fmt_bytes(stats.total_bytes_sent), c);
+        status_row("Data received   ", &nodex_vpn_core::features::fmt_bytes(stats.total_bytes_received), c);
+        status_row("Total data      ", &stats.total_data_str(), c);
+        status_row("Total uptime    ", &fmt_duration(stats.total_uptime_secs), c);
+        if stats.last_connected_unix > 0 {
+            use std::time::{UNIX_EPOCH, Duration};
+            let t = UNIX_EPOCH + Duration::from_secs(stats.last_connected_unix);
+            if let Ok(d) = t.elapsed() {
+                status_row("Last connected  ", &format!("{} ago", fmt_duration(d.as_secs())), c);
+            }
+        }
+    } else {
+        println!("  Total sessions: {}", stats.total_sessions);
+        println!("  Data sent:      {}", nodex_vpn_core::features::fmt_bytes(stats.total_bytes_sent));
+        println!("  Data received:  {}", nodex_vpn_core::features::fmt_bytes(stats.total_bytes_received));
+        println!("  Total uptime:   {}", fmt_duration(stats.total_uptime_secs));
+    }
+    println!();
+}
+
 // ── login ─────────────────────────────────────────────────────────────────────
 
 fn cmd_login(quiet: bool) {
@@ -623,4 +755,118 @@ fn cmd_whoami() {
         }
     }
     println!();
+}
+
+// ── leak-test ─────────────────────────────────────────────────────────────────
+
+fn cmd_leak_test(quiet: bool) {
+    let c = colors_enabled();
+    if !is_running() {
+        if c { eprintln!("  {} Not connected. Connect first.", "✘".red().bold()); }
+        else  { eprintln!("  [ERROR] Not connected."); }
+        std::process::exit(1);
+    }
+    if !quiet {
+        if c { println!("  {} Running leak test via Tor…", "›".bright_black()); }
+        else  { println!("  Running leak test..."); }
+        println!();
+    }
+    let result = nodex_vpn_core::run_leak_test();
+    if c {
+        let mark = |ok: bool| if ok { "✔".green().to_string() } else { "✘".red().to_string() };
+        println!("  {}  DNS leak      : {}", mark(!result.dns_leak),
+            if result.dns_leak { "DETECTED".red().to_string() } else { "None".green().to_string() });
+        println!("  {}  IPv6 leak     : {}", mark(!result.ipv6_leak),
+            if result.ipv6_leak { "Enabled (risk)".yellow().to_string() } else { "Disabled".green().to_string() });
+        if let Some(ref ip) = result.exit_ip {
+            println!("  {}  Exit IP       : {}", "✔".green(), ip.cyan());
+        } else {
+            println!("  {}  Exit IP       : could not verify", "⚠".yellow());
+        }
+        println!();
+        if result.passed {
+            println!("  {} {}", "✔".green().bold(), result.summary.green());
+        } else {
+            println!("  {} {}", "⚠".yellow(), result.summary);
+        }
+    } else {
+        println!("  DNS leak:  {}", result.dns_leak);
+        println!("  IPv6 leak: {}", result.ipv6_leak);
+        println!("  Exit IP:   {}", result.exit_ip.as_deref().unwrap_or("unknown"));
+        println!("  Result:    {}", result.summary);
+    }
+    println!();
+}
+
+// ── speed-test ────────────────────────────────────────────────────────────────
+
+fn cmd_speed_test(quiet: bool) {
+    let c = colors_enabled();
+    if !is_running() {
+        if c { eprintln!("  {} Not connected. Connect first for accurate results.", "⚠".yellow()); }
+        else  { eprintln!("  [WARN] Not connected."); }
+    }
+    if !quiet {
+        if c { println!("  {} Testing node latency… (this may take ~30s)", "›".bright_black()); }
+        else  { println!("  Testing node latency..."); }
+        println!();
+    }
+    nodex_vpn_core::start_speed_test();
+    // Wait for results
+    std::thread::sleep(std::time::Duration::from_secs(35));
+    let results = nodex_vpn_core::get_cached_speed_results();
+    if results.is_empty() {
+        println!("  No results yet. Try again in a moment.");
+        return;
+    }
+    let hdr = format!("  {:<10} {:<5} {:<20} {:>10}  {:<10}", "ID", "CC", "Country", "Latency", "Grade");
+    if c { println!("{}", hdr.bright_black()); println!("{}", "  ".to_owned() + &"─".repeat(60)); }
+    else  { println!("{hdr}"); println!("  {}", "─".repeat(60)); }
+    for r in &results {
+        let lat = format!("{:.0} ms", r.latency_ms);
+        let grade = match r.grade.as_str() {
+            "Excellent" => if c { "Excellent".green().to_string()  } else { "Excellent".into() },
+            "Good"      => if c { "Good".cyan().to_string()        } else { "Good".into()      },
+            "Fair"      => if c { "Fair".yellow().to_string()      } else { "Fair".into()      },
+            _           => if c { "Poor".red().to_string()         } else { "Poor".into()      },
+        };
+        println!("  {:<10} {:<5} {:<20} {:>10}  {:<10}", r.node_id, r.country_code, r.country_code, lat, grade);
+    }
+    println!();
+}
+
+// ── favorites ─────────────────────────────────────────────────────────────────
+
+fn cmd_favorites(action: FavoritesAction, quiet: bool) {
+    let c = colors_enabled();
+    match action {
+        FavoritesAction::List => {
+            let favs = nodex_vpn_core::get_favorites();
+            if favs.is_empty() {
+                println!("  No favorites yet.");
+                println!("  Add one: nodex favorites add <node-id> \"My Label\"");
+                return;
+            }
+            println!();
+            let hdr = format!("  {:<12} {:<5} {:<20} {:<16}", "Node ID", "CC", "Country", "Label");
+            if c { println!("{}", hdr.bright_black()); }
+            else  { println!("{hdr}"); }
+            for f in &favs {
+                println!("  {:<12} {:<5} {:<20} {:<16}",
+                    f.node_id, f.country_code, f.country_name, f.label);
+            }
+            println!();
+        }
+        FavoritesAction::Add { node_id, label } => {
+            let label = if label.is_empty() { node_id.clone() } else { label };
+            nodex_vpn_core::add_favorite(node_id.clone(), "??".into(), "Unknown".into(), label.clone());
+            if c { println!("  {} Added {} as \"{}\"", "✔".green().bold(), node_id.cyan(), label); }
+            else  { println!("  [OK] Added {node_id} as \"{label}\""); }
+        }
+        FavoritesAction::Remove { node_id } => {
+            nodex_vpn_core::remove_favorite(node_id.clone());
+            if c { println!("  {} Removed {}", "✔".green().bold(), node_id.cyan()); }
+            else  { println!("  [OK] Removed {node_id}"); }
+        }
+    }
 }

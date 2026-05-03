@@ -168,6 +168,14 @@ class VpnManager(
         circuitBuildTimeoutSecs  = cfg.circuitTimeout.toUInt(),
         stateDir                 = platform.stateDirectory(),
         cacheDir                 = platform.cacheDirectory(),
+        // Priority 1: Safety
+        killSwitch               = cfg.killSwitch,
+        autoReconnect            = cfg.autoReconnect,
+        // Priority 2: UX
+        httpsWarn                = cfg.httpsWarn,
+        backgroundBootstrap      = cfg.backgroundBootstrap,
+        // Priority 3: Power users
+        onionAccess              = cfg.onionAccess,
     )
 
     fun dispose() {
@@ -189,6 +197,14 @@ data class RustVpnConfig(
     val circuitBuildTimeoutSecs: UInt,
     val stateDir:                String,
     val cacheDir:                String,
+    // Priority 1: Safety
+    val killSwitch:              Boolean = true,
+    val autoReconnect:           Boolean = true,
+    // Priority 2: UX
+    val httpsWarn:               Boolean = true,
+    val backgroundBootstrap:     Boolean = true,
+    // Priority 3: Power users
+    val onionAccess:             Boolean = true,
 )
 
 // ── Data class mirroring Rust BootstrapStatus ─────────────────────────────────

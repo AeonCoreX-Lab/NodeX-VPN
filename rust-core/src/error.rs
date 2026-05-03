@@ -10,5 +10,7 @@ pub enum VpnError {
     #[error("Invalid configuration")]               InvalidConfig,
     #[error("Permission denied (need root/admin)")] PermissionDenied,
     #[error("Platform not supported")]              PlatformNotSupported,
+    #[error("Kill switch operation failed")]         KillSwitchFailed,
+    #[error("Auto-reconnect failed")]               ReconnectFailed,
     #[error("Unknown error")]                       Unknown,
 }

@@ -73,7 +73,7 @@ reqwest         = { version = "0.12", features = ["json", "blocking"], optional 
 open            = { version = "5",                           optional = true }
 tiny_http       = { version = "0.12",                        optional = true }
 keyring         = { version = "3",                           optional = true }
-dirs            = { version = "6",                           optional = true }
+dirs            = { version = "6" }  # used by features.rs (stats) and auth/token.rs
 
 # Sync primitives
 once_cell   = "1"
@@ -149,7 +149,7 @@ uniffi = { version = "0.31", features = ["build"] }
 [features]
 default = []
 metrics = []
-cli     = ["dep:clap", "dep:ctrlc", "dep:colored", "dep:is-terminal", "dep:oauth2", "dep:reqwest", "dep:open", "dep:tiny_http", "dep:keyring", "dep:dirs"]
+cli     = ["dep:clap", "dep:ctrlc", "dep:colored", "dep:is-terminal", "dep:oauth2", "dep:reqwest", "dep:open", "dep:tiny_http", "dep:keyring"]
 
 [profile.release]
 lto           = true

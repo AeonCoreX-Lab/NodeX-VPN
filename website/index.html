@@ -300,14 +300,23 @@ footer{border-top:1px solid var(--border);padding:56px 0 36px}
     <p class="ssub rv">Not a Tor proxy wrapper. A production-grade Tor client in Rust using the Arti engine — the future of Tor.</p>
     <div class="fgrid rv">
       <div class="fc"><span class="fi">🦀</span><h3>Rust + Arti Engine</h3><p>Built on arti-client — the Tor Project's own Rust implementation. Memory-safe, async, production-grade.</p><span class="ftag">arti 0.41</span></div>
-      <div class="fc"><span class="fi">🌉</span><h3>Bridge Support</h3><p>Full obfs4 bridge support. Works in China, Iran, Russia, and networks with deep packet inspection.</p><span class="ftag">obfs4 · pluggable transports</span></div>
+      <div class="fc"><span class="fi">🌉</span><h3>Bridge Support</h3><p>obfs4, Snowflake, meek-azure, WebTunnel. Works in China, Iran, Russia — bypasses deep packet inspection.</p><span class="ftag">obfs4 · Snowflake · meek</span></div>
       <div class="fc"><span class="fi">🔒</span><h3>Zero DNS Leaks</h3><p>All DNS queries routed through Tor circuits. Your ISP cannot see which domains you resolve.</p><span class="ftag">DNS-over-Tor</span></div>
-      <div class="fc"><span class="fi">🌍</span><h3>Exit Country Select</h3><p>Choose any exit country via Tor stream isolation. Fully serverless — no servers of ours involved.</p><span class="ftag">Serverless</span></div>
-      <div class="fc"><span class="fi">🔑</span><h3>Google Sign-In</h3><p>Sign in via Google OAuth2 PKCE. No passwords stored. Token secured in OS keychain automatically.</p><span class="ftag">OAuth2 PKCE · Keychain</span></div>
+      <div class="fc"><span class="fi">🛡️</span><h3>Kill Switch</h3><p>Blocks ALL traffic if VPN drops — no IP leaks. Uses nftables/iptables/pf/Windows Firewall per platform.</p><span class="ftag">Linux · macOS · Windows · FreeBSD</span></div>
+      <div class="fc"><span class="fi">🔁</span><h3>Auto-Reconnect</h3><p>Exponential backoff reconnect (2s→60s, 10 attempts). Kill switch stays active during reconnect.</p><span class="ftag">All platforms</span></div>
+      <div class="fc"><span class="fi">🌍</span><h3>Exit Country + Verification</h3><p>Choose any exit country. Built-in exit IP verification confirms actual exit matches expected country.</p><span class="ftag">Serverless · ipinfo.io verify</span></div>
+      <div class="fc"><span class="fi">🔀</span><h3>Split Tunneling</h3><p>Route specific apps or domains through Tor while others go direct. Bypass or Exclusive mode.</p><span class="ftag">Linux · macOS · Windows</span></div>
+      <div class="fc"><span class="fi">🧪</span><h3>Leak Test</h3><p>Built-in DNS, IPv6, and exit IP leak test. One tap to verify you are fully protected.</p><span class="ftag">DNS · IPv6 · WebRTC</span></div>
+      <div class="fc"><span class="fi">🚫</span><h3>IPv6 Leak Protection</h3><p>Disables IPv6 system-wide when VPN is active. Prevents IPv6 traffic from bypassing Tor.</p><span class="ftag">sysctl · netsh · networksetup</span></div>
+      <div class="fc"><span class="fi">⚡</span><h3>Node Speed Test</h3><p>Test latency to exit nodes before connecting. Auto-selects the fastest node for your location.</p><span class="ftag">Median of 3 probes</span></div>
+      <div class="fc"><span class="fi">📊</span><h3>Bandwidth Limiter</h3><p>Token-bucket rate limiting — cap upload and download to protect background data usage.</p><span class="ftag">Per-session config</span></div>
+      <div class="fc"><span class="fi">📋</span><h3>Connection Log</h3><p>Timestamped event timeline — connect, circuit rebuilt, kill switch toggle, leak detected.</p><span class="ftag">Last 500 events</span></div>
+      <div class="fc"><span class="fi">⭐</span><h3>Favorite Servers</h3><p>Bookmark frequently used nodes with custom labels. Sorted by most recently used.</p><span class="ftag">Persisted to disk</span></div>
+      <div class="fc"><span class="fi">🧅</span><h3>Onion Service Access</h3><p>.onion v3 address detection and routing. Access Tor hidden services through the VPN.</p><span class="ftag">v3 · deprecation warn</span></div>
+      <div class="fc"><span class="fi">🔑</span><h3>Google Sign-In</h3><p>OAuth2 PKCE flow. No passwords stored. Token encrypted in OS keychain (Keychain/WCM/Secret Service).</p><span class="ftag">OAuth2 PKCE · OS Keychain</span></div>
       <div class="fc"><span class="fi">📡</span><h3>Router Protection</h3><p>Deploy on pfSense, OPNsense, OpenWrt, Asus Merlin, or Synology NAS for whole-home Tor routing.</p><span class="ftag">FreeBSD · Linux</span></div>
-      <div class="fc"><span class="fi">🖥️</span><h3>Professional CLI</h3><p>Full-featured terminal client with live stats, progress bars, ANSI color, and NO_COLOR support.</p><span class="ftag">Linux · macOS · Windows · Termux</span></div>
-      <div class="fc"><span class="fi">📦</span><h3>npm Distribution</h3><p>Install globally with npm. Platform binary auto-selected. Works with npx without a global install.</p><span class="ftag">@aeoncorex/nodex-vpn</span></div>
-      <div class="fc"><span class="fi">🔄</span><h3>Auto CI/CD</h3><p>One git tag builds all 12 platforms, publishes to npm, and creates a GitHub Release with SHA256 checksums.</p><span class="ftag">GitHub Actions</span></div>
+      <div class="fc"><span class="fi">🖥️</span><h3>Professional CLI</h3><p>Kill switch, stats, speed test, leak test, favorites — all from terminal. NO_COLOR support.</p><span class="ftag">Linux · macOS · Windows · Termux</span></div>
+      <div class="fc"><span class="fi">📦</span><h3>npm Distribution</h3><p>Install globally with npm. Platform binary auto-selected. Works with npx without global install.</p><span class="ftag">@aeoncorex/nodex-vpn</span></div>
     </div>
   </div>
 </section>

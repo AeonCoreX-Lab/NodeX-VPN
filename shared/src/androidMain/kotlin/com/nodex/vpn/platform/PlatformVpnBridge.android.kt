@@ -20,7 +20,21 @@ external fun startNodex(
     circuitBuildTimeoutSecs: Int,
     stateDir:                String,
     cacheDir:                String,
+    killSwitch:              Boolean,
+    autoReconnect:           Boolean,
+    httpsWarn:               Boolean,
+    backgroundBootstrap:     Boolean,
+    onionAccess:             Boolean,
 )
+external fun enableKillSwitch(socksPort: Short, dnsPort: Short)
+external fun disableKillSwitch()
+external fun isKillSwitchActive(): Boolean
+external fun isKillSwitchSupported(): Boolean
+external fun getUsageStats(): String   // JSON-serialized UsageStats
+external fun resetUsageStats()
+external fun checkHttpsWarning(host: String, port: Short): String?
+external fun isOnionAddress(host: String): Boolean
+external fun describeOnionAddress(host: String): String
 external fun stopNodex()
 external fun isRunning(): Boolean
 external fun setExitNode(isoCode: String)
@@ -78,6 +92,11 @@ actual class PlatformVpnBridge actual constructor() {
             circuitBuildTimeoutSecs = config.circuitBuildTimeoutSecs.toInt(),
             stateDir                = stateDirectory(),
             cacheDir                = cacheDirectory(),
+            killSwitch              = config.killSwitch,
+            autoReconnect           = config.autoReconnect,
+            httpsWarn               = config.httpsWarn,
+            backgroundBootstrap     = config.backgroundBootstrap,
+            onionAccess             = config.onionAccess,
         )
     }
 

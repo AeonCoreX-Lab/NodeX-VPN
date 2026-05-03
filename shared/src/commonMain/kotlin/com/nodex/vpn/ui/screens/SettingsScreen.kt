@@ -75,6 +75,7 @@ fun SettingsScreen(vpnManager: VpnManager, authViewModel: AuthViewModel, windowS
             SecuritySection(config, vpnManager)
             BridgesSection(config, vpnManager)
             ConnectionSection(config, vpnManager)
+            AdvancedSection(config, vpnManager)
             AboutSection()
         }
     }
@@ -106,11 +107,41 @@ private fun AccountSection(authState: AuthState, showSignOut: () -> Unit) {
 @Composable
 private fun SecuritySection(config: com.nodex.vpn.domain.NodeXConfig, vpnManager: VpnManager) {
     SettingsSection("Security") {
-        SettingsToggle(Icons.Default.Security, "Kill Switch", "Block all traffic if VPN drops", config.killSwitch) { vpnManager.updateConfig { it.copy(killSwitch = !it.killSwitch) } }
+        // Priority 1: Safety
+        SettingsToggle(Icons.Default.Security, "Kill Switch",
+            "Block ALL traffic if VPN drops — prevents IP leaks",
+            config.killSwitch) { vpnManager.updateConfig { it.copy(killSwitch = !it.killSwitch) } }
         SettingsDivider()
-        SettingsToggle(Icons.Default.Dns, "DNS over Tor", "Prevents DNS leaks completely", config.dnsOverTor) { vpnManager.updateConfig { it.copy(dnsOverTor = !it.dnsOverTor) } }
+        SettingsToggle(Icons.Default.Autorenew, "Auto-Reconnect",
+            "Automatically reconnect if circuit drops",
+            config.autoReconnect) { vpnManager.updateConfig { it.copy(autoReconnect = !it.autoReconnect) } }
         SettingsDivider()
-        SettingsToggle(Icons.Default.Lock, "Strict Exit Nodes", "Only selected country exit relays", config.strictExitNodes) { vpnManager.updateConfig { it.copy(strictExitNodes = !it.strictExitNodes) } }
+        SettingsToggle(Icons.Default.Dns, "DNS over Tor",
+            "Routes all DNS through Tor — prevents DNS leaks",
+            config.dnsOverTor) { vpnManager.updateConfig { it.copy(dnsOverTor = !it.dnsOverTor) } }
+        SettingsDivider()
+        SettingsToggle(Icons.Default.Warning, "HTTPS Warning",
+            "Warn when connecting to unencrypted HTTP sites",
+            config.httpsWarn) { vpnManager.updateConfig { it.copy(httpsWarn = !it.httpsWarn) } }
+        SettingsDivider()
+        SettingsToggle(Icons.Default.Lock, "Strict Exit Nodes",
+            "Only use selected country exit relays",
+            config.strictExitNodes) { vpnManager.updateConfig { it.copy(strictExitNodes = !it.strictExitNodes) } }
+    }
+}
+
+@Composable
+private fun AdvancedSection(config: com.nodex.vpn.domain.NodeXConfig, vpnManager: VpnManager) {
+    SettingsSection("Advanced") {
+        // Priority 2: UX
+        SettingsToggle(Icons.Default.FlashOn, "Background Bootstrap",
+            "Pre-warm Tor circuit in background for faster connect",
+            config.backgroundBootstrap) { vpnManager.updateConfig { it.copy(backgroundBootstrap = !it.backgroundBootstrap) } }
+        SettingsDivider()
+        // Priority 3: Power users
+        SettingsToggle(Icons.Default.Language, "Onion Service Access (.onion)",
+            "Access Tor hidden services through the VPN",
+            config.onionAccess) { vpnManager.updateConfig { it.copy(onionAccess = !it.onionAccess) } }
     }
 }
 

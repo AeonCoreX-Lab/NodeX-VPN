@@ -123,6 +123,20 @@ hr.div{border:none;border-top:1px solid var(--border);margin:52px 0}
       <a href="#nocolor" class="sb-link">Scripting & NO_COLOR</a>
     </div>
     <div class="sb-section">
+      <div class="sb-label">Security</div>
+      <a href="#kill-switch" class="sb-link">Kill Switch</a>
+      <a href="#ipv6" class="sb-link">IPv6 Protection</a>
+      <a href="#leak-test" class="sb-link">Leak Test</a>
+      <a href="#split-tunnel" class="sb-link">Split Tunneling</a>
+      <a href="#webrtc" class="sb-link">WebRTC Protection</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Performance</div>
+      <a href="#speed-test" class="sb-link">Speed Test</a>
+      <a href="#bandwidth" class="sb-link">Bandwidth Limiter</a>
+      <a href="#favorites" class="sb-link">Favorite Servers</a>
+    </div>
+    <div class="sb-section">
       <div class="sb-label">Reference</div>
       <a href="#env" class="sb-link">Environment Variables</a>
       <a href="#files" class="sb-link">File Locations</a>
@@ -503,6 +517,116 @@ nodex status <span class="kw">--quiet</span> | grep "Exit IP"
     <hr class="div">
 
     <!-- BUILD -->
+    <hr class="div">
+
+    <h2 class="dh" id="kill-switch">Kill Switch</h2>
+    <p class="dp">Blocks ALL network traffic if the VPN connection drops — preventing your real IP from being exposed. Uses the OS firewall on each platform.</p>
+    <div class="note"><strong>Requires root / admin.</strong> On Linux: <code>sudo nodex connect --kill-switch</code>. On macOS: pfctl requires root. On Windows: run as Administrator.</div>
+    <div class="cb"><div class="cb-head">Usage</div><div class="cb-body">
+<span class="c"># Enable kill switch</span>
+nodex connect <span class="kw">--kill-switch</span>
+
+<span class="c"># Kill switch with specific country</span>
+nodex connect <span class="kw">--kill-switch</span> <span class="kw">--country</span> <span class="v">DE</span>
+
+<span class="c"># Disable is automatic on Ctrl+C / nodex disconnect</span>
+    </div></div>
+    <table class="ot">
+      <tr><th>Platform</th><th>Method</th></tr>
+      <tr><td>Linux</td><td>nftables (fallback: iptables) — dedicated <code>nodex_kill_switch</code> table</td></tr>
+      <tr><td>macOS</td><td>pfctl anchor <code>nodex_kill_switch</code></td></tr>
+      <tr><td>Windows</td><td>netsh advfirewall — block-all + allow SOCKS5/Tor rules</td></tr>
+      <tr><td>FreeBSD</td><td>pfctl anchor</td></tr>
+    </table>
+
+    <hr class="div">
+
+    <h2 class="dh" id="ipv6">IPv6 Leak Protection</h2>
+    <p class="dp">Disables IPv6 system-wide when the VPN is active. Without this, IPv6 traffic can bypass Tor and reveal your real IP to IPv6-enabled sites.</p>
+    <div class="cb"><div class="cb-head">CLI</div><div class="cb-body">
+nodex connect <span class="kw">--kill-switch</span>  <span class="c"># kill switch implies IPv6 block on Linux</span>
+    </div></div>
+    <p class="dp">In mobile/desktop apps: enable "IPv6 Leak Protection" toggle in Settings → Security.</p>
+
+    <hr class="div">
+
+    <h2 class="dh" id="leak-test">Leak Test</h2>
+    <p class="dp">Built-in leak test that checks DNS, IPv6, and exit IP — all routed through Tor for accuracy.</p>
+    <div class="cb"><div class="cb-head">CLI</div><div class="cb-body">
+<span class="c"># Run leak test (must be connected)</span>
+nodex leak-test
+
+<span class="c"># Example output</span>
+<span class="ok">  ✔</span> Exit IP       : 185.220.x.x
+<span class="ok">  ✔</span> Exit country  : Germany
+<span class="ok">  ✔</span> DNS leak      : None
+<span class="ok">  ✔</span> IPv6 leak     : None
+<span class="ok">  ✔</span> No leaks detected.
+    </div></div>
+
+    <hr class="div">
+
+    <h2 class="dh" id="split-tunnel">Split Tunneling</h2>
+    <p class="dp">Route only specific apps or domains through Tor, while others go direct. Two modes:</p>
+    <table class="ot">
+      <tr><th>Mode</th><th>Behaviour</th><th>Use case</th></tr>
+      <tr><td>Bypass</td><td>Listed apps/domains go direct, everything else through Tor</td><td>Exclude banking/Netflix</td></tr>
+      <tr><td>Exclusive</td><td>Only listed apps/domains go through Tor</td><td>Tor only for browser</td></tr>
+    </table>
+    <div class="cb"><div class="cb-head">CLI</div><div class="cb-body">
+<span class="c"># Bypass specific domain (go direct)</span>
+nodex connect <span class="kw">--bypass-domain</span> <span class="v">netflix.com</span> <span class="kw">--bypass-domain</span> <span class="v">mybank.com</span>
+
+<span class="c"># Always bypass LAN (default)</span>
+<span class="c"># 192.168.0.0/16, 10.0.0.0/8 bypass by default</span>
+    </div></div>
+
+    <hr class="div">
+
+    <h2 class="dh" id="webrtc">WebRTC Protection</h2>
+    <p class="dp">WebRTC can leak your local/public IP in browsers even when a VPN is active. NodeX detects the risk and provides mitigation steps.</p>
+    <div class="note">Mobile apps are not affected — system network stack routes all traffic through VPN. The risk is desktop browsers.</div>
+    <p class="dp"><strong>Mitigation:</strong> Install uBlock Origin → Settings → "Prevent WebRTC from leaking local IP addresses". Or use <code>--kill-switch</code> to block all non-Tor traffic at firewall level.</p>
+
+    <hr class="div">
+
+    <h2 class="dh" id="speed-test">Node Speed Test</h2>
+    <p class="dp">Test latency to exit nodes before connecting. Uses 3 HTTP probes and takes the median. Results cached for the session.</p>
+    <div class="cb"><div class="cb-head">CLI</div><div class="cb-body">
+<span class="c"># Test all nodes and show sorted by latency</span>
+nodex speed-test
+
+<span class="c"># Example output</span>
+  de-fra-01  DE   Germany      <span class="ok"> 98 ms  Excellent</span>
+  nl-ams-01  NL   Netherlands  <span class="ac">142 ms  Good</span>
+  us-nyc-01  US   USA          <span class="ms">289 ms  Fair</span>
+    </div></div>
+
+    <hr class="div">
+
+    <h2 class="dh" id="bandwidth">Bandwidth Limiter</h2>
+    <p class="dp">Cap upload and/or download rate to prevent the VPN from using all available bandwidth in the background.</p>
+    <div class="cb"><div class="cb-head">CLI</div><div class="cb-body">
+<span class="c"># Limit to 10 Mbps download, 5 Mbps upload</span>
+nodex connect <span class="kw">--max-download</span> <span class="v">10</span> <span class="kw">--max-upload</span> <span class="v">5</span>
+
+<span class="c"># No limit (default)</span>
+nodex connect
+    </div></div>
+
+    <hr class="div">
+
+    <h2 class="dh" id="favorites">Favorite Servers</h2>
+    <p class="dp">Bookmark frequently used nodes with a custom label. Sorted by most recently used.</p>
+    <div class="cb"><div class="cb-head">CLI</div><div class="cb-body">
+nodex favorites                       <span class="c"># list all</span>
+nodex favorites add de-fra-01 "Work"  <span class="c"># add with label</span>
+nodex favorites remove de-fra-01      <span class="c"># remove</span>
+nodex connect <span class="kw">--favorite</span> <span class="v">Work</span>         <span class="c"># connect to favorite</span>
+    </div></div>
+
+    <hr class="div">
+
     <h2 class="dh" id="build">Build from Source</h2>
     <p class="dp">Requires Rust stable (1.70+) and Cargo.</p>
     <div class="cb">

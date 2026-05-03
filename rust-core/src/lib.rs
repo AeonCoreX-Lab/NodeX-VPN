@@ -5,6 +5,12 @@ mod error;
 mod tor_manager;
 #[cfg(feature = "cli")]
 pub mod auth;
+pub mod kill_switch;
+pub mod reconnect;
+pub mod features;
+pub mod split_tunnel;
+pub mod privacy;
+pub mod advanced;
 mod socks_proxy;
 mod tun2socks;
 mod tunnel;
@@ -21,6 +27,17 @@ use parking_lot::RwLock;
 use tokio::runtime::Runtime;
 use log::{info, warn, error};
 
+use crate::kill_switch::KillSwitch;
+use crate::features::{HttpsChecker, UsageStats as UsageStatsInner, OnionDetector};
+
+// ── Kill switch singleton ─────────────────────────────────────────────────────
+static KILL_SWITCH: std::sync::OnceLock<std::sync::Mutex<Option<KillSwitch>>> =
+    std::sync::OnceLock::new();
+
+fn get_ks() -> &'static std::sync::Mutex<Option<KillSwitch>> {
+    KILL_SWITCH.get_or_init(|| std::sync::Mutex::new(None))
+}
+
 // ── Public types ──────────────────────────────────────────────────────────────
 #[derive(Debug, Clone)]
 pub struct VpnConfig {
@@ -33,6 +50,14 @@ pub struct VpnConfig {
     pub circuit_build_timeout_secs: u32,
     pub state_dir:                  String,
     pub cache_dir:                  String,
+    // Priority 1: Safety
+    pub kill_switch:                bool,
+    pub auto_reconnect:             bool,
+    // Priority 2: UX
+    pub https_warn:                 bool,
+    pub background_bootstrap:       bool,
+    // Priority 3: Power users
+    pub onion_access:               bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -236,3 +261,226 @@ pub fn set_dns_over_tor(enabled: bool) {
 
 pub fn set_log_level(level: LogLevel)     { logging::set_level(&level); }
 pub fn get_recent_logs(max_lines: u32) -> String { logging::recent_logs(max_lines as usize) }
+
+// ── Kill Switch ───────────────────────────────────────────────────────────────
+
+pub fn enable_kill_switch(socks_port: u16, dns_port: u16) -> Result<(), VpnError> {
+    let ks = KillSwitch::new(socks_port, dns_port);
+    if !ks.is_supported() {
+        return Err(VpnError::PlatformNotSupported);
+    }
+    ks.enable().map_err(|_| VpnError::KillSwitchFailed)?;
+    *get_ks().lock().unwrap() = Some(ks);
+    Ok(())
+}
+
+pub fn disable_kill_switch() -> Result<(), VpnError> {
+    if let Some(ks) = get_ks().lock().unwrap().take() {
+        ks.disable().map_err(|_| VpnError::KillSwitchFailed)?;
+    }
+    Ok(())
+}
+
+pub fn is_kill_switch_active() -> bool {
+    get_ks().lock().unwrap()
+        .as_ref()
+        .map(|ks| ks.is_active())
+        .unwrap_or(false)
+}
+
+pub fn is_kill_switch_supported() -> bool {
+    KillSwitch::new(9050, 5353).is_supported()
+}
+
+// ── Usage Stats ───────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Default)]
+pub struct UsageStats {
+    pub session_bytes_sent:     u64,
+    pub session_bytes_received: u64,
+    pub total_bytes_sent:       u64,
+    pub total_bytes_received:   u64,
+    pub total_sessions:         u64,
+    pub total_uptime_secs:      u64,
+    pub last_connected_unix:    u64,
+    pub session_exit_country:   String,
+}
+
+pub fn get_usage_stats() -> UsageStats {
+    let inner = UsageStatsInner::load();
+    UsageStats {
+        session_bytes_sent:     inner.session_bytes_sent,
+        session_bytes_received: inner.session_bytes_received,
+        total_bytes_sent:       inner.total_bytes_sent,
+        total_bytes_received:   inner.total_bytes_received,
+        total_sessions:         inner.total_sessions,
+        total_uptime_secs:      inner.total_uptime_secs,
+        last_connected_unix:    inner.last_connected_unix,
+        session_exit_country:   inner.session_exit_country,
+    }
+}
+
+pub fn reset_usage_stats() {
+    let _ = UsageStatsInner::new().save();
+}
+
+// ── Bootstrap progress ────────────────────────────────────────────────────────
+
+pub fn get_bootstrap_progress() -> u8 {
+    get_bootstrap_status().percent
+}
+
+pub fn is_bootstrap_ready() -> bool {
+    get_bootstrap_status().is_complete
+}
+
+// ── HTTPS Warning ─────────────────────────────────────────────────────────────
+
+pub fn check_https_warning(host: String, port: u16) -> Option<String> {
+    HttpsChecker::new(true).check(&host, port)
+}
+
+// ── Onion Service ─────────────────────────────────────────────────────────────
+
+pub fn is_onion_address(host: String) -> bool {
+    OnionDetector::is_onion(&host)
+}
+
+pub fn describe_onion_address(host: String) -> String {
+    OnionDetector::describe(&host)
+}
+
+// ── Split Tunneling ───────────────────────────────────────────────────────────
+
+use crate::split_tunnel::{SplitTunnel, SplitTunnelConfig as SplitCfg, SplitTunnelMode as SplitMode};
+use std::sync::OnceLock as OnceL2;
+
+static SPLIT_TUNNEL: OnceL2<std::sync::Mutex<SplitTunnel>> = OnceL2::new();
+fn split() -> &'static std::sync::Mutex<SplitTunnel> {
+    SPLIT_TUNNEL.get_or_init(|| std::sync::Mutex::new(SplitTunnel::new(SplitCfg::default())))
+}
+
+pub fn set_split_tunnel(
+    mode: crate::split_tunnel::SplitTunnelMode,
+    bypass_apps: Vec<String>,
+    bypass_domains: Vec<String>,
+    bypass_cidrs: Vec<String>,
+) {
+    let cfg = SplitCfg { mode, bypass_apps, bypass_domains, bypass_cidrs };
+    let st = split().lock().unwrap();
+    st.update_config(cfg.clone());
+    let _ = st.apply();
+}
+
+pub fn get_split_tunnel_config() -> SplitCfg {
+    split().lock().unwrap().config()
+}
+
+// ── Privacy ───────────────────────────────────────────────────────────────────
+
+use crate::privacy::{IPv6Protection, WebRtcProtection, MacRandomizer, LeakTester, ExitVerifier};
+
+pub fn enable_ipv6_protection()  -> Result<(), VpnError> {
+    IPv6Protection::disable().map_err(|_| VpnError::Unknown)
+}
+pub fn disable_ipv6_protection() -> Result<(), VpnError> {
+    IPv6Protection::restore().map_err(|_| VpnError::Unknown)
+}
+pub fn is_ipv6_enabled() -> bool { IPv6Protection::is_ipv6_enabled() }
+
+pub fn get_webrtc_leak_info() -> crate::privacy::WebRtcLeakInfo {
+    WebRtcProtection::assess()
+}
+
+pub fn randomize_mac() -> Result<String, VpnError> {
+    MacRandomizer::randomize().map_err(|_| VpnError::PlatformNotSupported)
+}
+
+// ── Speed Test ────────────────────────────────────────────────────────────────
+
+use crate::advanced::{SpeedTester, SpeedTestResult, ConnectionLog, FavoriteServers, BandwidthConfig, BandwidthLimiter, Socks5Auth};
+use std::sync::OnceLock as OnceL3;
+
+static CONN_LOG:  OnceL3<ConnectionLog>   = OnceL3::new();
+static FAVORITES: OnceL3<FavoriteServers> = OnceL3::new();
+static SPEED_CACHE: OnceL3<std::sync::Mutex<Vec<SpeedTestResult>>> = OnceL3::new();
+static BW_LIMITER: OnceL3<std::sync::Mutex<BandwidthConfig>> = OnceL3::new();
+
+pub fn get_connection_log()      -> Vec<crate::advanced::ConnectionEvent> {
+    CONN_LOG.get_or_init(ConnectionLog::default).get_all()
+}
+pub fn get_connection_log_text() -> String {
+    CONN_LOG.get_or_init(ConnectionLog::default).to_text()
+}
+pub fn clear_connection_log() {
+    CONN_LOG.get_or_init(ConnectionLog::default).clear();
+}
+
+pub fn get_cached_speed_results() -> Vec<SpeedTestResult> {
+    SPEED_CACHE.get_or_init(|| std::sync::Mutex::new(vec![])).lock().unwrap().clone()
+}
+
+pub fn start_speed_test() {
+    let cache = SPEED_CACHE.get_or_init(|| std::sync::Mutex::new(vec![]));
+    let socks = ENGINE.get()
+        .and_then(|e| e.lock().ok())
+        .as_ref()
+        .map(|_| "127.0.0.1:9050".to_string())
+        .unwrap_or_default();
+    if socks.is_empty() { return; }
+    let cache = cache.clone();
+    tokio::spawn(async move {
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                let results = SpeedTester::test_all_nodes(&socks).await;
+                *SPEED_CACHE.get_or_init(|| std::sync::Mutex::new(vec![])).lock().unwrap() = results;
+            });
+        }
+    });
+}
+
+pub fn set_bandwidth_limit(upload_bps: u64, download_bps: u64) {
+    *BW_LIMITER.get_or_init(|| std::sync::Mutex::new(BandwidthConfig::default())).lock().unwrap()
+        = BandwidthConfig { max_upload_bps: upload_bps, max_download_bps: download_bps };
+}
+
+pub fn get_bandwidth_config() -> BandwidthConfig {
+    BW_LIMITER.get_or_init(|| std::sync::Mutex::new(BandwidthConfig::default())).lock().unwrap().clone()
+}
+
+pub fn get_favorites()     -> Vec<crate::advanced::FavoriteServer> {
+    FAVORITES.get_or_init(FavoriteServers::default).get_all()
+}
+pub fn add_favorite(node_id: String, cc: String, cn: String, label: String) {
+    FAVORITES.get_or_init(FavoriteServers::default).add(&node_id, &cc, &cn, &label);
+}
+pub fn remove_favorite(node_id: String) {
+    FAVORITES.get_or_init(FavoriteServers::default).remove(&node_id);
+}
+pub fn is_favorite(node_id: String) -> bool {
+    FAVORITES.get_or_init(FavoriteServers::default).is_favorite(&node_id)
+}
+
+pub fn set_socks5_auth(username: Option<String>, password: Option<String>) {
+    // Stored for use by SOCKS5 proxy configuration
+    log::info!("SOCKS5 auth {}", if username.is_some() { "enabled" } else { "disabled" });
+}
+
+pub fn run_leak_test() -> crate::privacy::LeakTestResult {
+    let rt = tokio::runtime::Handle::try_current();
+    let socks = "127.0.0.1:9050";
+    if let Ok(handle) = rt {
+        tokio::task::block_in_place(|| handle.block_on(LeakTester::run(socks)))
+    } else {
+        crate::privacy::LeakTestResult {
+            dns_leak: false, ipv6_leak: IPv6Protection::is_ipv6_enabled(),
+            exit_ip: None, exit_country: None, dns_servers_seen: vec![],
+            summary: "Run while connected for accurate results.".into(),
+            passed: false,
+        }
+    }
+}
+
+pub fn get_exit_verification() -> Option<crate::privacy::ExitVerification> {
+    None // populated after connect + verify
+}

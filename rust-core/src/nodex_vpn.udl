@@ -38,6 +38,72 @@ namespace nodex_vpn {
     // ── Logging ───────────────────────────────────────────────────────────────
     void set_log_level(LogLevel level);
     string get_recent_logs(u32 max_lines);
+
+    // ── Split Tunneling ──────────────────────────────────────────────────────
+    void set_split_tunnel(SplitTunnelMode mode, sequence<string> bypass_apps, sequence<string> bypass_domains, sequence<string> bypass_cidrs);
+    SplitTunnelConfig get_split_tunnel_config();
+
+    // ── Privacy Protection ────────────────────────────────────────────────────
+    [Throws=VpnError]
+    void enable_ipv6_protection();
+    [Throws=VpnError]
+    void disable_ipv6_protection();
+    boolean is_ipv6_enabled();
+    WebRtcLeakInfo get_webrtc_leak_info();
+    [Throws=VpnError]
+    string randomize_mac();
+    ExitVerification? get_exit_verification();
+
+    // ── Leak Test ─────────────────────────────────────────────────────────────
+    LeakTestResult run_leak_test();
+
+    // ── Speed Test ────────────────────────────────────────────────────────────
+    sequence<SpeedTestResult> get_cached_speed_results();
+    void start_speed_test();
+
+    // ── Bandwidth ─────────────────────────────────────────────────────────────
+    void set_bandwidth_limit(u64 upload_bps, u64 download_bps);
+    BandwidthConfig get_bandwidth_config();
+
+    // ── Connection Log ────────────────────────────────────────────────────────
+    sequence<ConnectionEvent> get_connection_log();
+    string get_connection_log_text();
+    void clear_connection_log();
+
+    // ── Favorites ─────────────────────────────────────────────────────────────
+    sequence<FavoriteServer> get_favorites();
+    void add_favorite(string node_id, string country_code, string country_name, string label);
+    void remove_favorite(string node_id);
+    boolean is_favorite(string node_id);
+
+    // ── SOCKS5 Auth ───────────────────────────────────────────────────────────
+    void set_socks5_auth(string? username, string? password);
+
+    // ── Kill Switch ───────────────────────────────────────────────────────────
+    [Throws=VpnError]
+    void enable_kill_switch(u16 socks_port, u16 dns_port);
+
+    [Throws=VpnError]
+    void disable_kill_switch();
+
+    boolean is_kill_switch_active();
+
+    boolean is_kill_switch_supported();
+
+    // ── Usage Stats ───────────────────────────────────────────────────────────
+    UsageStats get_usage_stats();
+    void reset_usage_stats();
+
+    // ── Bootstrap progress (for background pre-warm) ──────────────────────────
+    u8 get_bootstrap_progress();
+    boolean is_bootstrap_ready();
+
+    // ── HTTPS check ───────────────────────────────────────────────────────────
+    string? check_https_warning(string host, u16 port);
+
+    // ── Onion service ─────────────────────────────────────────────────────────
+    boolean is_onion_address(string host);
+    string describe_onion_address(string host);
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -54,6 +120,14 @@ dictionary VpnConfig {
     u32 circuit_build_timeout_secs;
     string state_dir;               // OS-specific data directory
     string cache_dir;
+    // Priority 1: Safety features
+    boolean kill_switch;            // Block traffic if VPN drops
+    boolean auto_reconnect;         // Auto-reconnect on circuit drop
+    // Priority 2: UX features
+    boolean https_warn;             // Warn on HTTP connections
+    boolean background_bootstrap;   // Pre-warm circuit on app start
+    // Priority 3: Power user features
+    boolean onion_access;           // Enable .onion address routing
 };
 
 dictionary VpnStats {
@@ -78,6 +152,79 @@ dictionary ServerNode {
     u8 load_percent;
     boolean is_bridge;
     boolean supports_obfs4;
+};
+
+enum SplitTunnelMode { "Disabled", "Exclusive", "Bypass" };
+
+dictionary SplitTunnelConfig {
+    SplitTunnelMode mode;
+    sequence<string> bypass_apps;
+    sequence<string> bypass_domains;
+    sequence<string> bypass_cidrs;
+};
+
+dictionary WebRtcLeakInfo {
+    string risk_level;
+    string message;
+    string mitigation;
+};
+
+dictionary ExitVerification {
+    string verified_ip;
+    string verified_country;
+    string? expected_country;
+    boolean country_match;
+    boolean is_tor_exit;
+};
+
+dictionary LeakTestResult {
+    boolean dns_leak;
+    boolean ipv6_leak;
+    string? exit_ip;
+    sequence<string> dns_servers_seen;
+    string summary;
+    boolean passed;
+};
+
+dictionary SpeedTestResult {
+    string node_id;
+    string country_code;
+    f64 latency_ms;
+    f64 download_kbps;
+    string grade;
+    u64 tested_at;
+};
+
+dictionary BandwidthConfig {
+    u64 max_upload_bps;
+    u64 max_download_bps;
+};
+
+dictionary ConnectionEvent {
+    u64 timestamp;
+    string event_type;
+    string detail;
+};
+
+dictionary FavoriteServer {
+    string node_id;
+    string country_code;
+    string country_name;
+    string label;
+    u64 added_at;
+    u64 last_used_at;
+    u32 use_count;
+};
+
+dictionary UsageStats {
+    u64 session_bytes_sent;
+    u64 session_bytes_received;
+    u64 total_bytes_sent;
+    u64 total_bytes_received;
+    u64 total_sessions;
+    u64 total_uptime_secs;
+    u64 last_connected_unix;
+    string session_exit_country;
 };
 
 dictionary BootstrapStatus {
@@ -114,5 +261,7 @@ enum VpnError {
     "InvalidConfig",
     "PermissionDenied",
     "PlatformNotSupported",
+    "KillSwitchFailed",
+    "ReconnectFailed",
     "Unknown",
 };

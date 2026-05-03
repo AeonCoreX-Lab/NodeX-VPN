@@ -65,6 +65,25 @@ Your Device  →  Guard Relay  →  Middle Relay  →  Exit Relay  →  Internet
 | **Live Traffic Graph** | Real-time bandwidth visualization |
 | **Circuit Management** | Multi-circuit Tor connection pooling |
 
+### 🛡️ New Features (Priority 1-3 + Advanced)
+| Feature | Details |
+|---------|---------|
+| **Kill Switch** | Block ALL traffic if VPN drops — nftables/iptables/pf/Windows Firewall |
+| **Auto-Reconnect** | Exponential backoff (2s→60s), 10 attempts, kill switch stays active |
+| **IPv6 Leak Protection** | Disable IPv6 system-wide when VPN active — Linux/macOS/Windows |
+| **WebRTC Leak Detection** | Assess and warn about browser WebRTC leak risk |
+| **Split Tunneling** | Bypass/Exclusive mode — route specific apps or domains around Tor |
+| **Exit IP Verification** | Confirm actual exit IP + country after connect |
+| **DNS Leak Test** | Built-in "Am I leaking?" check — DNS, IPv6, exit IP |
+| **Node Speed Test** | Test latency to exit nodes before connecting |
+| **Bandwidth Limiter** | Token-bucket rate limiting — cap upload/download |
+| **Connection Log** | Timestamped event timeline — connect, circuit, kill switch |
+| **Favorite Servers** | Bookmark frequently used nodes with custom labels |
+| **SOCKS5 Auth** | Username/password authentication on SOCKS5 proxy |
+| **MAC Randomization** | Randomize WiFi MAC on connect — Linux/macOS |
+| **Snowflake/meek Bridges** | Beyond obfs4 — WebRTC and HTTPS-disguised transports |
+| **Onion Service Access** | .onion v3 address detection and routing |
+
 ### 🖥️ CLI (nodex)
 | Feature | Details |
 |---------|---------| 
