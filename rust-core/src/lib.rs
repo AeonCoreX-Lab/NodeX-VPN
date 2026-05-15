@@ -352,6 +352,16 @@ pub fn describe_onion_address(host: String) -> String {
 
 // ── Split Tunneling ───────────────────────────────────────────────────────────
 
+// Re-export types needed by UDL-generated code at crate root
+pub use crate::split_tunnel::{SplitTunnelMode, SplitTunnelConfig};
+pub use crate::advanced::{
+    ConnectionEvent, ConnectionEventType,
+    SpeedTestResult, SpeedGrade,
+    FavoriteServer,
+    BandwidthConfig,
+};
+pub use crate::privacy::{WebRtcLeakInfo, WebRtcRiskLevel, ExitVerification, LeakTestResult};
+
 use crate::split_tunnel::{SplitTunnel, SplitTunnelConfig as SplitCfg, SplitTunnelMode as SplitMode};
 use std::sync::OnceLock as OnceL2;
 

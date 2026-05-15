@@ -282,20 +282,21 @@ impl LeakTester {
         }
     }
 
+    #[cfg(feature = "cli")]
     async fn fetch_exit_ip(socks_addr: &str) -> Option<String> {
-        // Use reqwest with SOCKS5 proxy to fetch IP
-        // In production: use ifconfig.me or api.ipify.org via Tor
         let client = reqwest::Client::builder()
             .proxy(reqwest::Proxy::all(format!("socks5h://{socks_addr}")).ok()?)
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .ok()?;
-
         client.get("https://api.ipify.org")
             .send().await.ok()?
             .text().await.ok()
             .map(|s| s.trim().to_string())
     }
+
+    #[cfg(not(feature = "cli"))]
+    async fn fetch_exit_ip(_socks_addr: &str) -> Option<String> { None }
 
     async fn check_dns_leak() -> bool {
         // Try to resolve a domain via system DNS (not Tor)

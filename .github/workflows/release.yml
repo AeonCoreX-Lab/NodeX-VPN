@@ -201,8 +201,8 @@ jobs:
         working-directory: rust-core
         env:
           SOURCE_DATE_EPOCH: "0"
-          NODEX_GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID }}
-          NODEX_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          NODEX_GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID_CLI }}
+          NODEX_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET_CLI }}
         run: cross build --release --features cli --bin nodex --target ${{ matrix.target }}
 
       # ── Package for GitHub Release ────────────────────────────────────────────

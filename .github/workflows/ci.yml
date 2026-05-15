@@ -49,7 +49,7 @@ jobs:
           # ── FreeBSD x64 (pfSense / OPNsense) ─────────────────────────────
           - { target: x86_64-unknown-freebsd,   os: ubuntu-24.04,     group: freebsd }
           - { target: aarch64-unknown-freebsd,  os: ubuntu-24.04,     group: freebsd }
-          - { target: armv7-unknown-linux-gnueabihf, os: ubuntu-24.04, group: linux   }
+          - { target: armv7-unknown-linux-gnueabihf, os: ubuntu-24.04, group: linux-armv7 }
           # ── Windows (x64 + arm64) ─────────────────────────────────────────
           - { target: x86_64-pc-windows-msvc,    os: windows-2022,     group: windows }
           - { target: aarch64-pc-windows-msvc,   os: windows-11-arm,   group: windows }
@@ -93,10 +93,20 @@ jobs:
         if:   matrix.group == 'freebsd'
         working-directory: rust-core
         run: |
-          # cross handles the FreeBSD sysroot + linker automatically
           cross build --release --target ${{ matrix.target }}
-          # Also build the CLI binary for router/NAS deployments
           cross build --release --features cli --bin nodex --target ${{ matrix.target }}
+
+      - name: Build (Linux ARMv7 — via cross)
+        if:   matrix.group == 'linux-armv7'
+        working-directory: rust-core
+        env:
+          NODEX_GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID_CLI }}
+          NODEX_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET_CLI }}
+        run: |
+          cargo install cross --locked
+          # cross provides armv7 sysroot with correct openssl headers
+          cross build --release --target armv7-unknown-linux-gnueabihf
+          cross build --release --features cli --bin nodex --target armv7-unknown-linux-gnueabihf
 
       - name: Build (Android)
         if:   matrix.group == 'android'
@@ -132,6 +142,9 @@ jobs:
       - name: Build CLI (desktop targets)
         if:   matrix.group == 'linux' || matrix.group == 'macos' || matrix.group == 'windows'
         working-directory: rust-core
+        env:
+          NODEX_GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID_CLI }}
+          NODEX_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET_CLI }}
         run:  cargo build --release --features cli --bin nodex --target ${{ matrix.target }}
 
       - name: UniFFI tvOS Swift bindings

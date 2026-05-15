@@ -187,6 +187,7 @@ pub struct SpeedTester;
 impl SpeedTester {
     /// Test latency to a node via Tor SOCKS5.
     /// Makes 3 HTTP HEAD requests to a fast endpoint and takes median.
+    #[cfg(feature = "cli")]
     pub async fn test_node(
         node_id:     &str,
         country:     &str,
@@ -226,20 +227,27 @@ impl SpeedTester {
     }
 
     /// Test all available nodes and return sorted by latency
+    #[cfg(feature = "cli")]
     pub async fn test_all_nodes(socks_addr: &str) -> Vec<SpeedTestResult> {
-        use crate::node_registry::get_available_nodes;
+        use crate::{get_available_nodes};
         let nodes = get_available_nodes();
         let mut results = Vec::new();
-
-        for node in nodes.iter().take(10) { // test top 10 to avoid too long
+        for node in nodes.iter().take(10) {
             if let Ok(r) = Self::test_node(&node.id, &node.country_code, socks_addr).await {
                 results.push(r);
             }
         }
-
         results.sort_by(|a, b| a.latency_ms.partial_cmp(&b.latency_ms).unwrap());
         results
     }
+
+
+    #[cfg(not(feature = "cli"))]
+    pub async fn test_node(_node_id: &str, _country: &str, _socks_addr: &str) -> anyhow::Result<SpeedTestResult> {
+        anyhow::bail!("Speed test requires CLI feature")
+    }
+    #[cfg(not(feature = "cli"))]
+    pub async fn test_all_nodes(_socks_addr: &str) -> Vec<SpeedTestResult> { vec![] }
 }
 
 // ── ④ Bandwidth Limiter ───────────────────────────────────────────────────────
